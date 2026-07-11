@@ -1100,6 +1100,17 @@
       "default_branch": "main",
       "asset_name": "smack-in-module.tar.gz",
       "min_host_version": "0.3.0"
+    },
+    {
+      "id": "oversmack",
+      "name": "Oversmack",
+      "description": "Full-surface Smack: input loop glitcher (mic/line/USB-C) with the whole pad grid as a step-FX editor - 22-effect palette, dual mono, BPM detect",
+      "author": "timncox",
+      "component_type": "overtake",
+      "github_repo": "timncox/schwung-oversmack",
+      "default_branch": "main",
+      "asset_name": "oversmack-module.tar.gz",
+      "min_host_version": "0.3.0"
     }
   ]
 }
