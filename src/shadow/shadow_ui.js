@@ -8895,7 +8895,14 @@ function processPendingHierKnob() {
     if (ctx.meta && ctx.meta.type === "enum" && ctx.meta.options && ctx.meta.options.length > 0) {
         if (isTriggerEnumMeta(ctx.meta)) {
             const shouldFire = updateTriggerEnumAccum(knobIndex, delta);
-            if (shouldFire) {
+            if (delta < 0) {
+                /* Counter-clockwise is the explicit safe position. Besides
+                 * re-arming the gesture state above, forward idle so modules
+                 * and remote observers agree with the on-screen feedback. */
+                setSlotParam(ctx.slot, ctx.fullKey, "idle");
+                knobValueCache[knobIndex] = "idle";
+                showOverlay(ctx.title, "Idle", TRIGGER_ENUM_OVERLAY_TICKS);
+            } else if (shouldFire) {
                 setSlotParam(ctx.slot, ctx.fullKey, "trigger");
                 /* The module consumes "trigger" as a pulse and reports idle
                  * immediately. Mirror that locally so no cached Triggered

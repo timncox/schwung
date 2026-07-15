@@ -30,6 +30,10 @@ if ! rg -Fq 'knobValueCache[knobIndex] = "idle";' "$file" ||
   echo "FAIL: fired trigger does not return its cache to idle with short feedback" >&2
   exit 1
 fi
+if ! perl -0ne 'exit((/if\s*\(delta\s*<\s*0\)\s*\{[^}]*setSlotParam\(ctx\.slot,\s*ctx\.fullKey,\s*"idle"\)\s*;[^}]*showOverlay\(ctx\.title,\s*"Idle",\s*TRIGGER_ENUM_OVERLAY_TICKS\)\s*;/s) ? 0 : 1)' "$file"; then
+  echo "FAIL: counter-clockwise trigger gesture does not explicitly return idle" >&2
+  exit 1
+fi
 
-echo "PASS: trigger enum gestures reset cleanly with momentary feedback"
+echo "PASS: clockwise triggers and counter-clockwise returns idle"
 exit 0
