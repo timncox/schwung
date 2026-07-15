@@ -5,6 +5,7 @@
  */
 
 #include "chain_internal.h"
+#include <stdarg.h>
 
 /*
  * Format a parameter value for display based on its metadata.
@@ -56,6 +57,64 @@ int format_param_value(chain_param_info_t *param, float value, char *buf, int bu
     }
 
     return strlen(buf);
+}
+
+static int chain_json_append(char *buf, int buf_len, int *offset,
+                             const char *format, ...) {
+    if (!buf || !offset || *offset < 0 || *offset >= buf_len) return -1;
+
+    va_list args;
+    va_start(args, format);
+    int written = vsnprintf(buf + *offset, (size_t)(buf_len - *offset), format, args);
+    va_end(args);
+    if (written < 0 || written >= buf_len - *offset) return -1;
+    *offset += written;
+    return 0;
+}
+
+/* Serialize parsed module metadata for Shadow UI. Keep every field that
+ * affects knob behavior: dropping step made 0..100 controls fall back to
+ * 0.01-per-tick in JS, which looked completely stuck after DSP rounding. */
+int serialize_chain_params_json(const chain_param_info_t *params, int count,
+                                char *buf, int buf_len) {
+    if (!params || count <= 0 || !buf || buf_len < 3) return -1;
+
+    int offset = 0;
+    if (chain_json_append(buf, buf_len, &offset, "[") < 0) return -1;
+    for (int i = 0; i < count && i < MAX_CHAIN_PARAMS; i++) {
+        const chain_param_info_t *p = &params[i];
+        const char *type_str = (p->type == KNOB_TYPE_INT) ? "int" :
+                               (p->type == KNOB_TYPE_ENUM) ? "enum" : "float";
+        if (chain_json_append(buf, buf_len, &offset,
+                "%s{\"key\":\"%s\",\"name\":\"%s\",\"type\":\"%s\","
+                "\"min\":%g,\"max\":%g,\"default\":%g,\"step\":%g",
+                i > 0 ? "," : "", p->key, p->name[0] ? p->name : p->key,
+                type_str, p->min_val, p->max_val, p->default_val, p->step) < 0) {
+            return -1;
+        }
+        if (p->type == KNOB_TYPE_ENUM && p->option_count > 0) {
+            if (chain_json_append(buf, buf_len, &offset, ",\"options\":[") < 0) return -1;
+            for (int j = 0; j < p->option_count && j < MAX_ENUM_OPTIONS; j++) {
+                if (chain_json_append(buf, buf_len, &offset, "%s\"%s\"",
+                                      j > 0 ? "," : "", p->options[j]) < 0) {
+                    return -1;
+                }
+            }
+            if (chain_json_append(buf, buf_len, &offset, "]") < 0) return -1;
+        }
+        if (p->unit[0] &&
+            chain_json_append(buf, buf_len, &offset, ",\"unit\":\"%s\"", p->unit) < 0) {
+            return -1;
+        }
+        if (p->display_format[0] &&
+            chain_json_append(buf, buf_len, &offset, ",\"display_format\":\"%s\"",
+                              p->display_format) < 0) {
+            return -1;
+        }
+        if (chain_json_append(buf, buf_len, &offset, "}") < 0) return -1;
+    }
+    if (chain_json_append(buf, buf_len, &offset, "]") < 0) return -1;
+    return offset;
 }
 
 /* Find or create a smoothed parameter slot */

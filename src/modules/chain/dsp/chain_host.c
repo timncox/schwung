@@ -1515,38 +1515,9 @@ static int v2_get_param(void *instance, const char *key, char *buf, int buf_len)
             }
             /* Fall back to parsed module.json data */
             if (inst->synth_param_count > 0) {
-                int offset = 0;
-                offset += snprintf(buf + offset, buf_len - offset, "[");
-                for (int i = 0; i < inst->synth_param_count && offset < buf_len - 100; i++) {
-                    chain_param_info_t *p = &inst->synth_params[i];
-                    if (i > 0) offset += snprintf(buf + offset, buf_len - offset, ",");
-                    const char *type_str = (p->type == KNOB_TYPE_INT) ? "int" :
-                                          (p->type == KNOB_TYPE_ENUM) ? "enum" : "float";
-                    offset += snprintf(buf + offset, buf_len - offset,
-                        "{\"key\":\"%s\",\"name\":\"%s\",\"type\":\"%s\",\"min\":%g,\"max\":%g",
-                        p->key, p->name[0] ? p->name : p->key,
-                        type_str,
-                        p->min_val, p->max_val);
-                    /* Add options array for enum types */
-                    if (p->type == KNOB_TYPE_ENUM && p->option_count > 0) {
-                        offset += snprintf(buf + offset, buf_len - offset, ",\"options\":[");
-                        for (int j = 0; j < p->option_count && j < MAX_ENUM_OPTIONS; j++) {
-                            if (j > 0) offset += snprintf(buf + offset, buf_len - offset, ",");
-                            offset += snprintf(buf + offset, buf_len - offset, "\"%s\"", p->options[j]);
-                        }
-                        offset += snprintf(buf + offset, buf_len - offset, "]");
-                    }
-                    /* Add unit and display_format if present */
-                    if (p->unit[0]) {
-                        offset += snprintf(buf + offset, buf_len - offset, ",\"unit\":\"%s\"", p->unit);
-                    }
-                    if (p->display_format[0]) {
-                        offset += snprintf(buf + offset, buf_len - offset, ",\"display_format\":\"%s\"", p->display_format);
-                    }
-                    offset += snprintf(buf + offset, buf_len - offset, "}");
-                }
-                offset += snprintf(buf + offset, buf_len - offset, "]");
-                return offset;
+                return serialize_chain_params_json(inst->synth_params,
+                                                   inst->synth_param_count,
+                                                   buf, buf_len);
             }
             return -1;  /* No chain_params available */
         }
@@ -1586,38 +1557,9 @@ static int v2_get_param(void *instance, const char *key, char *buf, int buf_len)
             }
             /* Fall back to parsed module.json data */
             if (inst->fx_param_counts[0] > 0) {
-                int offset = 0;
-                offset += snprintf(buf + offset, buf_len - offset, "[");
-                for (int i = 0; i < inst->fx_param_counts[0] && offset < buf_len - 100; i++) {
-                    chain_param_info_t *p = &inst->fx_params[0][i];
-                    if (i > 0) offset += snprintf(buf + offset, buf_len - offset, ",");
-                    const char *type_str = (p->type == KNOB_TYPE_INT) ? "int" :
-                                          (p->type == KNOB_TYPE_ENUM) ? "enum" : "float";
-                    offset += snprintf(buf + offset, buf_len - offset,
-                        "{\"key\":\"%s\",\"name\":\"%s\",\"type\":\"%s\",\"min\":%g,\"max\":%g",
-                        p->key, p->name[0] ? p->name : p->key,
-                        type_str,
-                        p->min_val, p->max_val);
-                    /* Add options array for enum types */
-                    if (p->type == KNOB_TYPE_ENUM && p->option_count > 0) {
-                        offset += snprintf(buf + offset, buf_len - offset, ",\"options\":[");
-                        for (int j = 0; j < p->option_count && j < MAX_ENUM_OPTIONS; j++) {
-                            if (j > 0) offset += snprintf(buf + offset, buf_len - offset, ",");
-                            offset += snprintf(buf + offset, buf_len - offset, "\"%s\"", p->options[j]);
-                        }
-                        offset += snprintf(buf + offset, buf_len - offset, "]");
-                    }
-                    /* Add unit and display_format if present */
-                    if (p->unit[0]) {
-                        offset += snprintf(buf + offset, buf_len - offset, ",\"unit\":\"%s\"", p->unit);
-                    }
-                    if (p->display_format[0]) {
-                        offset += snprintf(buf + offset, buf_len - offset, ",\"display_format\":\"%s\"", p->display_format);
-                    }
-                    offset += snprintf(buf + offset, buf_len - offset, "}");
-                }
-                offset += snprintf(buf + offset, buf_len - offset, "]");
-                return offset;
+                return serialize_chain_params_json(inst->fx_params[0],
+                                                   inst->fx_param_counts[0],
+                                                   buf, buf_len);
             }
             return -1;
         }
@@ -1659,38 +1601,9 @@ static int v2_get_param(void *instance, const char *key, char *buf, int buf_len)
             }
             /* Fall back to parsed module.json data */
             if (inst->fx_param_counts[1] > 0) {
-                int offset = 0;
-                offset += snprintf(buf + offset, buf_len - offset, "[");
-                for (int i = 0; i < inst->fx_param_counts[1] && offset < buf_len - 100; i++) {
-                    chain_param_info_t *p = &inst->fx_params[1][i];
-                    if (i > 0) offset += snprintf(buf + offset, buf_len - offset, ",");
-                    const char *type_str = (p->type == KNOB_TYPE_INT) ? "int" :
-                                          (p->type == KNOB_TYPE_ENUM) ? "enum" : "float";
-                    offset += snprintf(buf + offset, buf_len - offset,
-                        "{\"key\":\"%s\",\"name\":\"%s\",\"type\":\"%s\",\"min\":%g,\"max\":%g",
-                        p->key, p->name[0] ? p->name : p->key,
-                        type_str,
-                        p->min_val, p->max_val);
-                    /* Add options array for enum types */
-                    if (p->type == KNOB_TYPE_ENUM && p->option_count > 0) {
-                        offset += snprintf(buf + offset, buf_len - offset, ",\"options\":[");
-                        for (int j = 0; j < p->option_count && j < MAX_ENUM_OPTIONS; j++) {
-                            if (j > 0) offset += snprintf(buf + offset, buf_len - offset, ",");
-                            offset += snprintf(buf + offset, buf_len - offset, "\"%s\"", p->options[j]);
-                        }
-                        offset += snprintf(buf + offset, buf_len - offset, "]");
-                    }
-                    /* Add unit and display_format if present */
-                    if (p->unit[0]) {
-                        offset += snprintf(buf + offset, buf_len - offset, ",\"unit\":\"%s\"", p->unit);
-                    }
-                    if (p->display_format[0]) {
-                        offset += snprintf(buf + offset, buf_len - offset, ",\"display_format\":\"%s\"", p->display_format);
-                    }
-                    offset += snprintf(buf + offset, buf_len - offset, "}");
-                }
-                offset += snprintf(buf + offset, buf_len - offset, "]");
-                return offset;
+                return serialize_chain_params_json(inst->fx_params[1],
+                                                   inst->fx_param_counts[1],
+                                                   buf, buf_len);
             }
             return -1;
         }
@@ -1730,38 +1643,9 @@ static int v2_get_param(void *instance, const char *key, char *buf, int buf_len)
             }
             /* Fall back to parsed module.json data */
             if (inst->midi_fx_param_counts[0] > 0) {
-                int written = snprintf(buf, buf_len, "[");
-                for (int i = 0; i < inst->midi_fx_param_counts[0] && written < buf_len - 10; i++) {
-                    chain_param_info_t *p = &inst->midi_fx_params[0][i];
-                    if (i > 0) written += snprintf(buf + written, buf_len - written, ",");
-                    const char *type_str = (p->type == KNOB_TYPE_INT) ? "int" :
-                                          (p->type == KNOB_TYPE_ENUM) ? "enum" : "float";
-                    written += snprintf(buf + written, buf_len - written,
-                        "{\"key\":\"%s\",\"name\":\"%s\",\"type\":\"%s\"",
-                        p->key, p->name, type_str);
-                    if (p->type == KNOB_TYPE_FLOAT || p->type == KNOB_TYPE_INT) {
-                        written += snprintf(buf + written, buf_len - written,
-                            ",\"min\":%.2f,\"max\":%.2f,\"default\":%.2f",
-                            p->min_val, p->max_val, p->default_val);
-                    } else if (p->type == KNOB_TYPE_ENUM && p->option_count > 0) {
-                        written += snprintf(buf + written, buf_len - written, ",\"options\":[");
-                        for (int j = 0; j < p->option_count; j++) {
-                            if (j > 0) written += snprintf(buf + written, buf_len - written, ",");
-                            written += snprintf(buf + written, buf_len - written, "\"%s\"", p->options[j]);
-                        }
-                        written += snprintf(buf + written, buf_len - written, "]");
-                    }
-                    /* Add unit and display_format if present */
-                    if (p->unit[0]) {
-                        written += snprintf(buf + written, buf_len - written, ",\"unit\":\"%s\"", p->unit);
-                    }
-                    if (p->display_format[0]) {
-                        written += snprintf(buf + written, buf_len - written, ",\"display_format\":\"%s\"", p->display_format);
-                    }
-                    written += snprintf(buf + written, buf_len - written, "}");
-                }
-                written += snprintf(buf + written, buf_len - written, "]");
-                return written;
+                return serialize_chain_params_json(inst->midi_fx_params[0],
+                                                   inst->midi_fx_param_counts[0],
+                                                   buf, buf_len);
             }
             return -1;  /* No chain_params available */
         }
@@ -1798,38 +1682,9 @@ static int v2_get_param(void *instance, const char *key, char *buf, int buf_len)
             }
             /* Fall back to parsed module.json data */
             if (inst->midi_fx_param_counts[1] > 0) {
-                int written = snprintf(buf, buf_len, "[");
-                for (int i = 0; i < inst->midi_fx_param_counts[1] && written < buf_len - 10; i++) {
-                    chain_param_info_t *p = &inst->midi_fx_params[1][i];
-                    if (i > 0) written += snprintf(buf + written, buf_len - written, ",");
-                    const char *type_str = (p->type == KNOB_TYPE_INT) ? "int" :
-                                          (p->type == KNOB_TYPE_ENUM) ? "enum" : "float";
-                    written += snprintf(buf + written, buf_len - written,
-                        "{\"key\":\"%s\",\"name\":\"%s\",\"type\":\"%s\"",
-                        p->key, p->name, type_str);
-                    if (p->type == KNOB_TYPE_FLOAT || p->type == KNOB_TYPE_INT) {
-                        written += snprintf(buf + written, buf_len - written,
-                            ",\"min\":%.2f,\"max\":%.2f,\"default\":%.2f",
-                            p->min_val, p->max_val, p->default_val);
-                    } else if (p->type == KNOB_TYPE_ENUM && p->option_count > 0) {
-                        written += snprintf(buf + written, buf_len - written, ",\"options\":[");
-                        for (int j = 0; j < p->option_count; j++) {
-                            if (j > 0) written += snprintf(buf + written, buf_len - written, ",");
-                            written += snprintf(buf + written, buf_len - written, "\"%s\"", p->options[j]);
-                        }
-                        written += snprintf(buf + written, buf_len - written, "]");
-                    }
-                    /* Add unit and display_format if present */
-                    if (p->unit[0]) {
-                        written += snprintf(buf + written, buf_len - written, ",\"unit\":\"%s\"", p->unit);
-                    }
-                    if (p->display_format[0]) {
-                        written += snprintf(buf + written, buf_len - written, ",\"display_format\":\"%s\"", p->display_format);
-                    }
-                    written += snprintf(buf + written, buf_len - written, "}");
-                }
-                written += snprintf(buf + written, buf_len - written, "]");
-                return written;
+                return serialize_chain_params_json(inst->midi_fx_params[1],
+                                                   inst->midi_fx_param_counts[1],
+                                                   buf, buf_len);
             }
             return -1;
         }

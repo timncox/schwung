@@ -266,7 +266,9 @@ Mapping assignment, value queries, and patch restore seed that cache from the
 plugin's live value; component-prefixed `set_param` writes update matching
 target+parameter mappings without a plugin callback on the SPI path. The knob
 picker filters momentary `["idle", "trigger"]` enum actions and uses parameter
-`name` metadata for display labels.
+`name` metadata for display labels. Fallback `chain_params` serialization must
+retain both `default` and `step`; Shadow UI uses `step` for physical hierarchy
+knobs, and dropping it makes wide-range integer-like floats appear stuck.
 
 ### Chain Architecture
 

@@ -418,6 +418,7 @@ CHAIN_INTERNAL float dsp_value_to_float(const char *val_str, chain_param_info_t 
 CHAIN_INTERNAL chain_param_info_t* find_param_by_key(chain_instance_t *inst, const char *target, const char *key);
 CHAIN_INTERNAL chain_param_info_t *find_param_info(chain_param_info_t *params, int count, const char *key);
 CHAIN_INTERNAL int format_param_value(chain_param_info_t *param, float value, char *buf, int buf_len);
+CHAIN_INTERNAL int serialize_chain_params_json(const chain_param_info_t *params, int count, char *buf, int buf_len);
 CHAIN_INTERNAL int is_smoothable_float(const char *val, float *out_value);
 CHAIN_INTERNAL chain_param_info_t *knob_find_param(chain_instance_t *inst, const char *target, const char *param);
 CHAIN_INTERNAL void knob_forward_value(chain_instance_t *inst, const char *target, const char *param, const char *val_str);

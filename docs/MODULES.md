@@ -1070,6 +1070,9 @@ relative knobs are initialized from the plugin's live value, and prefixed host
 writes keep their cached encoder value synchronized with the same target and
 parameter. This prevents a knob from jumping back to a manifest default after
 the value was changed on a hierarchy page, in a module UI, or through Remote UI.
+When the host synthesizes `chain_params` from `module.json`, it preserves
+`default` and `step`; the hierarchy knob engine therefore uses the module's
+declared increment instead of its generic float fallback.
 
 #### `filepath` in module.json
 
