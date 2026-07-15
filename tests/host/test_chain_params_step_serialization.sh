@@ -21,6 +21,15 @@ if ! rg -Fq 'serialize_chain_params_json(const chain_param_info_t *params' "$hea
   echo "FAIL: shared chain_params serializer declaration is missing" >&2
   exit 1
 fi
+if ! rg -Fq '\"knob_acceleration\":\"%s\"' "$params_file"; then
+  echo "FAIL: chain_params serializer drops knob_acceleration metadata" >&2
+  exit 1
+fi
+if ! rg -Fq 'knob_wide_accel_multiplier(' "$host_file" ||
+   ! rg -Fq 'knob_wide_accel_multiplier(' "src/modules/chain/dsp/chain_midi.c"; then
+  echo "FAIL: assigned knob paths do not honor wide acceleration" >&2
+  exit 1
+fi
 
 call_count="$(rg -c 'return serialize_chain_params_json\(' "$host_file")"
 if [[ "$call_count" != "5" ]]; then

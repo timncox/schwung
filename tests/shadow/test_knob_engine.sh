@@ -10,7 +10,7 @@ fi
 
 node -e '
 import("./src/shared/knob_engine.mjs").then((m) => {
-  const { knobInit, knobTick, KNOB_TYPE_FLOAT, KNOB_TYPE_INT, KNOB_TYPE_ENUM } = m;
+  const { knobInit, knobTick, knobConfigFromMeta, KNOB_TYPE_FLOAT, KNOB_TYPE_INT, KNOB_TYPE_ENUM } = m;
 
   // Float: first tick has no prior — divisor=1 path, step=0.01
   let st = knobInit(0.5);
@@ -79,6 +79,26 @@ import("./src/shared/knob_engine.mjs").then((m) => {
   if (st.value !== 2 || st.tickAccum !== 2) {
       console.log("FAIL int batched delta=10:", st.value, "accum:", st.tickAccum); process.exit(1);
   }
+
+  // Opt-in wide int: exact first/slow/reverse turns, then 10/50/250 sweeps.
+  const wideCfg = knobConfigFromMeta({
+      type: "int", min: 1, max: 9999, step: 1, knob_acceleration: "wide"
+  });
+  st = knobInit(4303);
+  v = knobTick(st, wideCfg, 1, 1000);  // cold start: +1
+  if (v !== 4304) { console.log("FAIL wide cold:", v); process.exit(1); }
+  v = knobTick(st, wideCfg, 1, 1150);  // medium-slow: +10
+  if (v !== 4314) { console.log("FAIL wide 10x:", v); process.exit(1); }
+  v = knobTick(st, wideCfg, 1, 1200);  // medium-fast: +50
+  if (v !== 4364) { console.log("FAIL wide 50x:", v); process.exit(1); }
+  v = knobTick(st, wideCfg, 2, 1220);  // fast batched: +2*250
+  if (v !== 4864) { console.log("FAIL wide 250x batch:", v); process.exit(1); }
+  v = knobTick(st, wideCfg, -1, 1230); // reversal: only -1
+  if (v !== 4863) { console.log("FAIL wide reverse fine:", v); process.exit(1); }
+  v = knobTick(st, wideCfg, 1, 1240);   // reverse again: one fine +1
+  if (v !== 4864) { console.log("FAIL wide forward fine:", v); process.exit(1); }
+  v = knobTick(st, wideCfg, 100, 1250); // sustained fast batch clamps at max
+  if (v !== 9999) { console.log("FAIL wide clamp:", v); process.exit(1); }
 
   // Enum batched delta: enumDivisor=10; delta=20 should emit 2 steps
   st = knobInit(0);

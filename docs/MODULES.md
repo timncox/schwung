@@ -1289,6 +1289,18 @@ declare `step` explicitly. (Note: this is half the previous default of
 `0.02` for floats — most modules already declare step, so this is invisible
 in practice.)
 
+Integer IDs with thousands of useful values can opt into wide browsing while
+retaining exact slow edits:
+
+```json
+{ "key": "seed", "type": "int", "min": 1, "max": 9999,
+  "step": 1, "knob_acceleration": "wide" }
+```
+
+The `wide` profile moves 1 value on a first, slow, or reversed tick, then 10,
+50, or 250 values per tick as the turn accelerates. It is honored by hierarchy
+knobs and assigned chain knobs. Unknown profiles retain the standard curve.
+
 ## Shared Utilities
 
 Import path from modules: `../../shared/<file>.mjs`

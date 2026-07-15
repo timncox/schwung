@@ -112,6 +112,7 @@ typedef struct {
     char unit[16];          /* Unit suffix (e.g., "Hz", "dB", "%") */
     char display_format[16]; /* Display format hint (e.g., "%.2f", "%d") */
     float step;             /* Step size for UI increments */
+    char knob_acceleration[16]; /* Optional profile, e.g. "wide" for huge ints */
     char options[MAX_ENUM_OPTIONS][32];  /* Enum options (if type is ENUM) */
     int option_count;       /* Number of enum options */
 } chain_param_info_t;
@@ -275,6 +276,7 @@ typedef struct chain_instance {
     knob_mapping_t knob_mappings[MAX_KNOB_MAPPINGS];
     int knob_mapping_count;
     uint64_t knob_last_time_ms[MAX_KNOB_MAPPINGS];  /* For acceleration */
+    int8_t knob_last_direction[MAX_KNOB_MAPPINGS];  /* Reversal restarts fine */
 
     /* Runtime modulation bus state */
     mod_target_state_t mod_targets[MAX_MOD_TARGETS];
@@ -419,6 +421,11 @@ CHAIN_INTERNAL chain_param_info_t* find_param_by_key(chain_instance_t *inst, con
 CHAIN_INTERNAL chain_param_info_t *find_param_info(chain_param_info_t *params, int count, const char *key);
 CHAIN_INTERNAL int format_param_value(chain_param_info_t *param, float value, char *buf, int buf_len);
 CHAIN_INTERNAL int serialize_chain_params_json(const chain_param_info_t *params, int count, char *buf, int buf_len);
+CHAIN_INTERNAL int knob_wide_accel_multiplier(const chain_param_info_t *param,
+                                              uint64_t last_time_ms,
+                                              int last_direction,
+                                              int direction,
+                                              uint64_t now_ms);
 CHAIN_INTERNAL int is_smoothable_float(const char *val, float *out_value);
 CHAIN_INTERNAL chain_param_info_t *knob_find_param(chain_instance_t *inst, const char *target, const char *param);
 CHAIN_INTERNAL void knob_forward_value(chain_instance_t *inst, const char *target, const char *param, const char *val_str);

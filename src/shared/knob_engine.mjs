@@ -32,7 +32,7 @@ const KNOB_ACCEL_MED_MS = 150;
 const KNOB_STALE_MS = 2000;   // gap above this → treat as cold start (engine self-resets)
 
 export function knobInit(initialValue) {
-    return { lastTickMs: 0, value: initialValue, tickAccum: 0 };
+    return { lastTickMs: 0, value: initialValue, tickAccum: 0, lastDirection: 0 };
 }
 
 function clampf(v, lo, hi) {
@@ -56,6 +56,25 @@ function tickDivisor(state, nowMs) {
 }
 
 export function knobTick(state, config, direction, nowMs) {
+    if (config.type === KNOB_TYPE_INT && config.knobAcceleration === "wide") {
+        const sign = direction > 0 ? 1 : -1;
+        const elapsed = state.lastTickMs > 0 && nowMs > state.lastTickMs
+            ? nowMs - state.lastTickMs : Number.POSITIVE_INFINITY;
+        let multiplier = 1;
+        /* A reversal always starts fine, making a fast overshoot trivial to
+         * correct. Batched deltas remain proportional at every speed. */
+        if (sign === state.lastDirection) {
+            if (elapsed <= 35) multiplier = 250;
+            else if (elapsed <= 90) multiplier = 50;
+            else if (elapsed <= 180) multiplier = 10;
+        }
+        state.lastTickMs = nowMs;
+        state.lastDirection = sign;
+        state.tickAccum = 0;
+        state.value = clampf(state.value + direction * multiplier, config.min, config.max);
+        return state.value;
+    }
+
     const divisor = tickDivisor(state, nowMs);
     state.lastTickMs = nowMs;
 
@@ -102,6 +121,7 @@ export function knobConfigFromMeta(meta) {
             min: typeof meta.min === "number" ? meta.min : 0,
             max: typeof meta.max === "number" ? meta.max : 127,
             step: meta.step > 0 ? meta.step : 1,
+            knobAcceleration: meta.knob_acceleration || "",
         };
     }
     if (meta.type === "enum") {

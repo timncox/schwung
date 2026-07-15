@@ -1101,6 +1101,7 @@ static void v2_set_param(void *instance, const char *key, const char *val) {
                         knob_read_current_value(inst, target, param, pinfo, fallback, &current);
                         inst->knob_mappings[mapping_index].current_value = current;
                         inst->knob_last_time_ms[mapping_index] = 0;
+                        inst->knob_last_direction[mapping_index] = 0;
                     }
                 }
                 inst->dirty = 1;
@@ -1113,9 +1114,11 @@ static void v2_set_param(void *instance, const char *key, const char *val) {
                         for (int j = i; j < inst->knob_mapping_count - 1; j++) {
                             inst->knob_mappings[j] = inst->knob_mappings[j + 1];
                             inst->knob_last_time_ms[j] = inst->knob_last_time_ms[j + 1];
+                            inst->knob_last_direction[j] = inst->knob_last_direction[j + 1];
                         }
                         inst->knob_mapping_count--;
                         inst->knob_last_time_ms[inst->knob_mapping_count] = 0;
+                        inst->knob_last_direction[inst->knob_mapping_count] = 0;
                         inst->dirty = 1;
                         break;
                     }
@@ -1139,29 +1142,37 @@ static void v2_set_param(void *instance, const char *key, const char *val) {
                         uint64_t now = get_time_ms();
                         uint64_t last = inst->knob_last_time_ms[i];
                         inst->knob_last_time_ms[i] = now;
-                        int accel = KNOB_ACCEL_MIN_MULT;
-                        if (last > 0) {
-                            uint64_t elapsed = now - last;
-                            if (elapsed <= KNOB_ACCEL_FAST_MS) {
-                                accel = KNOB_ACCEL_MAX_MULT;
-                            } else if (elapsed < KNOB_ACCEL_SLOW_MS) {
-                                float ratio = (float)(KNOB_ACCEL_SLOW_MS - elapsed) /
-                                              (float)(KNOB_ACCEL_SLOW_MS - KNOB_ACCEL_FAST_MS);
-                                accel = KNOB_ACCEL_MIN_MULT + (int)(ratio * (KNOB_ACCEL_MAX_MULT - KNOB_ACCEL_MIN_MULT));
+                        int direction = delta_int > 0 ? 1 : -1;
+                        int accel = knob_wide_accel_multiplier(
+                            pinfo, last, inst->knob_last_direction[i], direction, now);
+                        inst->knob_last_direction[i] = (int8_t)direction;
+                        if (accel == 0) {
+                            accel = KNOB_ACCEL_MIN_MULT;
+                            if (last > 0) {
+                                uint64_t elapsed = now - last;
+                                if (elapsed <= KNOB_ACCEL_FAST_MS) {
+                                    accel = KNOB_ACCEL_MAX_MULT;
+                                } else if (elapsed < KNOB_ACCEL_SLOW_MS) {
+                                    float ratio = (float)(KNOB_ACCEL_SLOW_MS - elapsed) /
+                                                  (float)(KNOB_ACCEL_SLOW_MS - KNOB_ACCEL_FAST_MS);
+                                    accel = KNOB_ACCEL_MIN_MULT + (int)(ratio * (KNOB_ACCEL_MAX_MULT - KNOB_ACCEL_MIN_MULT));
+                                }
+                            }
+
+                            /* Cap the standard curve; wide ints intentionally
+                             * bypass this old 2x ceiling. */
+                            int is_int = (pinfo->type == KNOB_TYPE_INT || pinfo->type == KNOB_TYPE_ENUM);
+                            if (pinfo->type == KNOB_TYPE_ENUM) {
+                                accel = KNOB_ACCEL_ENUM_MULT;
+                            } else if (is_int && accel > KNOB_ACCEL_MAX_MULT_INT) {
+                                accel = KNOB_ACCEL_MAX_MULT_INT;
                             }
                         }
-
-                        /* Cap acceleration: enums never accelerate, ints limited */
-                        int is_int = (pinfo->type == KNOB_TYPE_INT || pinfo->type == KNOB_TYPE_ENUM);
-                        if (pinfo->type == KNOB_TYPE_ENUM) {
-                            accel = KNOB_ACCEL_ENUM_MULT;
-                        } else if (is_int && accel > KNOB_ACCEL_MAX_MULT_INT) {
-                            accel = KNOB_ACCEL_MAX_MULT_INT;
-                        }
                         /* Use step from param metadata, or 0.01 default for shadow adjust */
+                        int is_int = (pinfo->type == KNOB_TYPE_INT || pinfo->type == KNOB_TYPE_ENUM);
                         float base_step = (pinfo->step > 0) ? pinfo->step
                             : (is_int ? (float)KNOB_STEP_INT : 0.01f);
-                        float delta = base_step * accel * (delta_int > 0 ? 1 : -1);
+                        float delta = base_step * accel * direction;
 
                         /* Apply delta with clamping */
                         float new_val = inst->knob_mappings[i].current_value + delta;

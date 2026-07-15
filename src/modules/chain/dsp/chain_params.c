@@ -111,10 +111,32 @@ int serialize_chain_params_json(const chain_param_info_t *params, int count,
                               p->display_format) < 0) {
             return -1;
         }
+        if (p->knob_acceleration[0] &&
+            chain_json_append(buf, buf_len, &offset, ",\"knob_acceleration\":\"%s\"",
+                              p->knob_acceleration) < 0) {
+            return -1;
+        }
         if (chain_json_append(buf, buf_len, &offset, "}") < 0) return -1;
     }
     if (chain_json_append(buf, buf_len, &offset, "]") < 0) return -1;
     return offset;
+}
+
+/* Opt-in curve for integer IDs with thousands of useful values (seeds,
+ * large preset banks, etc.). Slow turns remain exact; sustained faster turns
+ * sweep 10/50/250 values per tick. Reversal always starts with one fine tick. */
+int knob_wide_accel_multiplier(const chain_param_info_t *param,
+                               uint64_t last_time_ms,
+                               int last_direction,
+                               int direction,
+                               uint64_t now_ms) {
+    if (!param || strcmp(param->knob_acceleration, "wide") != 0) return 0;
+    if (last_time_ms == 0 || direction != last_direction || now_ms <= last_time_ms) return 1;
+    uint64_t elapsed = now_ms - last_time_ms;
+    if (elapsed <= 35) return 250;
+    if (elapsed <= 90) return 50;
+    if (elapsed <= 180) return 10;
+    return 1;
 }
 
 /* Find or create a smoothed parameter slot */
@@ -332,6 +354,27 @@ static int parse_param_object(const char *param_json, chain_param_info_t *param)
                     if (len >= sizeof(param->unit)) len = sizeof(param->unit) - 1;
                     memcpy(param->unit, unit_start, len);
                     param->unit[len] = '\0';
+                }
+            }
+        }
+    }
+
+    /* Extract optional knob acceleration profile. Unknown profiles are
+     * preserved for forward compatibility and treated as default by hosts. */
+    const char *accel_start = bounded_strstr(param_json, param_obj_end, "\"knob_acceleration\"");
+    if (accel_start) {
+        accel_start = strchr(accel_start, ':');
+        if (accel_start) {
+            accel_start = strchr(accel_start, '"');
+            if (accel_start) {
+                accel_start++;
+                const char *accel_end = strchr(accel_start, '"');
+                if (accel_end && accel_end < param_obj_end) {
+                    int len = accel_end - accel_start;
+                    if (len >= (int)sizeof(param->knob_acceleration))
+                        len = (int)sizeof(param->knob_acceleration) - 1;
+                    memcpy(param->knob_acceleration, accel_start, (size_t)len);
+                    param->knob_acceleration[len] = '\0';
                 }
             }
         }
@@ -802,6 +845,23 @@ int parse_chain_params(const char *module_path, chain_param_info_t *params, int 
             const char *colon = strchr(def_pos, ':');
             if (colon && colon < obj_end) {
                 p->default_val = (float)atof(colon + 1);
+            }
+        }
+
+        /* Parse optional wide-range knob acceleration profile. */
+        const char *accel_pos = strstr(obj_start, "\"knob_acceleration\":");
+        if (accel_pos && accel_pos < obj_end) {
+            const char *q1 = strchr(accel_pos + 20, '"');
+            if (q1 && q1 < obj_end) {
+                q1++;
+                const char *q2 = strchr(q1, '"');
+                if (q2 && q2 < obj_end) {
+                    int len = (int)(q2 - q1);
+                    if (len >= (int)sizeof(p->knob_acceleration))
+                        len = (int)sizeof(p->knob_acceleration) - 1;
+                    memcpy(p->knob_acceleration, q1, (size_t)len);
+                    p->knob_acceleration[len] = '\0';
+                }
             }
         }
 

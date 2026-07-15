@@ -579,43 +579,47 @@ void v2_on_midi(void *instance, const uint8_t *msg, int len, int source) {
                     chain_param_info_t *pinfo = knob_find_param(inst, target, param);
                     if (!pinfo) continue;
 
+                    int direction = (msg[2] == 1) ? 1 : (msg[2] == 127 ? -1 : 0);
+                    if (direction == 0) return;  /* Ignore other relative values */
+
                     /* Calculate acceleration based on time between events */
                     uint64_t now = get_time_ms();
                     uint64_t last = inst->knob_last_time_ms[i];
                     inst->knob_last_time_ms[i] = now;
-                    int accel = KNOB_ACCEL_MIN_MULT;
-                    if (last > 0) {
-                        uint64_t elapsed = now - last;
-                        if (elapsed < KNOB_ACCEL_SLOW_MS) {
-                            if (elapsed <= KNOB_ACCEL_FAST_MS) {
-                                accel = KNOB_ACCEL_MAX_MULT;
-                            } else {
-                                float ratio = (float)(KNOB_ACCEL_SLOW_MS - elapsed) /
-                                              (float)(KNOB_ACCEL_SLOW_MS - KNOB_ACCEL_FAST_MS);
-                                accel = KNOB_ACCEL_MIN_MULT + (int)(ratio * (KNOB_ACCEL_MAX_MULT - KNOB_ACCEL_MIN_MULT));
+                    int accel = knob_wide_accel_multiplier(
+                        pinfo, last, inst->knob_last_direction[i], direction, now);
+                    inst->knob_last_direction[i] = (int8_t)direction;
+                    if (accel == 0) {
+                        accel = KNOB_ACCEL_MIN_MULT;
+                        if (last > 0) {
+                            uint64_t elapsed = now - last;
+                            if (elapsed < KNOB_ACCEL_SLOW_MS) {
+                                if (elapsed <= KNOB_ACCEL_FAST_MS) {
+                                    accel = KNOB_ACCEL_MAX_MULT;
+                                } else {
+                                    float ratio = (float)(KNOB_ACCEL_SLOW_MS - elapsed) /
+                                                  (float)(KNOB_ACCEL_SLOW_MS - KNOB_ACCEL_FAST_MS);
+                                    accel = KNOB_ACCEL_MIN_MULT + (int)(ratio * (KNOB_ACCEL_MAX_MULT - KNOB_ACCEL_MIN_MULT));
+                                }
                             }
+                        }
+
+                        /* Cap normal acceleration: enums never accelerate,
+                         * ordinary ints stay conservative. Wide ints opt into
+                         * the separate 1/10/50/250 browsing curve above. */
+                        int is_int = (pinfo->type == KNOB_TYPE_INT || pinfo->type == KNOB_TYPE_ENUM);
+                        if (pinfo->type == KNOB_TYPE_ENUM) {
+                            accel = KNOB_ACCEL_ENUM_MULT;
+                        } else if (is_int && accel > KNOB_ACCEL_MAX_MULT_INT) {
+                            accel = KNOB_ACCEL_MAX_MULT_INT;
                         }
                     }
 
-                    /* Cap acceleration: enums never accelerate, ints limited */
-                    int is_int = (pinfo->type == KNOB_TYPE_INT || pinfo->type == KNOB_TYPE_ENUM);
-                    if (pinfo->type == KNOB_TYPE_ENUM) {
-                        accel = KNOB_ACCEL_ENUM_MULT;
-                    } else if (is_int && accel > KNOB_ACCEL_MAX_MULT_INT) {
-                        accel = KNOB_ACCEL_MAX_MULT_INT;
-                    }
-
                     /* Relative encoder: apply acceleration to base step */
+                    int is_int = (pinfo->type == KNOB_TYPE_INT || pinfo->type == KNOB_TYPE_ENUM);
                     float base_step = (pinfo->step > 0) ? pinfo->step
                         : (is_int ? (float)KNOB_STEP_INT : KNOB_STEP_FLOAT);
-                    float delta = 0.0f;
-                    if (msg[2] == 1) {
-                        delta = base_step * accel;
-                    } else if (msg[2] == 127) {
-                        delta = -base_step * accel;
-                    } else {
-                        return;  /* Ignore other values */
-                    }
+                    float delta = base_step * accel * direction;
 
                     float new_val = inst->knob_mappings[i].current_value + delta;
                     if (new_val < pinfo->min_val) new_val = pinfo->min_val;
@@ -763,4 +767,3 @@ void v2_on_midi(void *instance, const uint8_t *msg, int len, int source) {
 }
 
 /* V2 set_param handler */
-
