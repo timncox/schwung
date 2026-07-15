@@ -753,6 +753,7 @@ const KNOB_BASE_STEP_FLOAT = 0.002; // Base step for floats (acceleration multip
 const KNOB_BASE_STEP_INT = 1;       // Base step for ints
 const TRIGGER_ENUM_TURN_THRESHOLD = 1;  // Positive detents required before firing trigger action
 const TRIGGER_ENUM_WINDOW_MS = 700;     // Pause longer than this to start a new trigger gesture
+const TRIGGER_ENUM_OVERLAY_TICKS = 45;  // Brief confirmation; never pin the hierarchy popup
 
 /* Time tracking for knob acceleration */
 let triggerEnumAccum = [0, 0, 0, 0, 0, 0, 0, 0];
@@ -8741,6 +8742,12 @@ function getKnobCachedValue(knobIndex, ctx) {
     if (knobValueCacheKey[knobIndex] !== ctx.fullKey) {
         knobValueCache[knobIndex] = null;
         knobValueCacheKey[knobIndex] = ctx.fullKey;
+        /* Trigger gesture state belongs to the mapped parameter, not the
+         * physical knob number. Navigating to a different action must start
+         * ready even if the same knob fired on the previous hierarchy page. */
+        triggerEnumAccum[knobIndex] = 0;
+        triggerEnumLastMs[knobIndex] = 0;
+        triggerEnumLatched[knobIndex] = false;
     }
 
     /* Return cached value if available */
@@ -8787,7 +8794,11 @@ function processPendingHierKnob() {
                 if (cached !== null) {
                     if (ctx.meta && (ctx.meta.type === "enum" || ctx.meta.type === "bool")) {
                         if (isTriggerEnumMeta(ctx.meta)) {
-                            showOverlay(ctx.title, getTriggerEnumOverlayValue(pendingHierKnobIndex));
+                            /* Trigger actions read back as idle. Do not repaint
+                             * their feedback every frame while a knob remains
+                             * touched: doing so reset the four-second overlay
+                             * timer forever and made the action look latched. */
+                            return;
                         } else {
                             showOverlay(ctx.title, formatMetaOptionValue(ctx.meta, cached));
                         }
@@ -8886,9 +8897,14 @@ function processPendingHierKnob() {
             const shouldFire = updateTriggerEnumAccum(knobIndex, delta);
             if (shouldFire) {
                 setSlotParam(ctx.slot, ctx.fullKey, "trigger");
-                showOverlay(ctx.title, "Triggered");
+                /* The module consumes "trigger" as a pulse and reports idle
+                 * immediately. Mirror that locally so no cached Triggered
+                 * value survives, while still giving brief visual feedback. */
+                knobValueCache[knobIndex] = "idle";
+                showOverlay(ctx.title, "Triggered", TRIGGER_ENUM_OVERLAY_TICKS);
             } else {
-                showOverlay(ctx.title, getTriggerEnumOverlayValue(knobIndex));
+                showOverlay(ctx.title, getTriggerEnumOverlayValue(knobIndex),
+                            TRIGGER_ENUM_OVERLAY_TICKS);
             }
             return;
         }

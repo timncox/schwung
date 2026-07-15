@@ -8,12 +8,28 @@ if ! command -v perl >/dev/null 2>&1; then
   exit 1
 fi
 
-# Trigger enums should support a down-turn reset while latched so the next
-# up-turn can fire again immediately.
+# Trigger enums should support a down-turn reset while a gesture is latched so
+# the next up-turn can fire again immediately.
 if ! perl -0ne 'exit((/if\s*\(latched\s*&&\s*delta\s*<\s*0\)\s*\{[^}]*accum\s*=\s*0\s*;[^}]*latched\s*=\s*false\s*;/s) ? 0 : 1)' "$file"; then
   echo "FAIL: updateTriggerEnumAccum() is missing latched negative-turn reset logic in ${file}" >&2
   exit 1
 fi
 
-echo "PASS: trigger enum latched state supports negative-turn reset"
+# Feedback must be momentary. Repainting from the no-delta tick path resets the
+# shared overlay timeout on every frame, which was the old stuck popup bug.
+if ! rg -Fq 'const TRIGGER_ENUM_OVERLAY_TICKS = 45;' "$file"; then
+  echo "FAIL: trigger actions do not define a short feedback timeout" >&2
+  exit 1
+fi
+if ! perl -0ne 'exit((/if\s*\(isTriggerEnumMeta\(ctx\.meta\)\)\s*\{[^}]*return\s*;/s) ? 0 : 1)' "$file"; then
+  echo "FAIL: no-delta hierarchy ticks still repaint trigger feedback" >&2
+  exit 1
+fi
+if ! rg -Fq 'knobValueCache[knobIndex] = "idle";' "$file" ||
+   ! rg -Fq 'showOverlay(ctx.title, "Triggered", TRIGGER_ENUM_OVERLAY_TICKS);' "$file"; then
+  echo "FAIL: fired trigger does not return its cache to idle with short feedback" >&2
+  exit 1
+fi
+
+echo "PASS: trigger enum gestures reset cleanly with momentary feedback"
 exit 0
