@@ -261,6 +261,13 @@ Modules expose `ui_hierarchy` (menu structure + knob mappings) via get_param:
 
 Types: `float` (min/max/step), `int` (min/max), `enum` (options). Optional: `default`, `unit`, `display_format`.
 
+User-assigned slot knobs maintain a relative-encoder cache in the chain host.
+Mapping assignment, value queries, and patch restore seed that cache from the
+plugin's live value; component-prefixed `set_param` writes update matching
+target+parameter mappings without a plugin callback on the SPI path. The knob
+picker filters momentary `["idle", "trigger"]` enum actions and uses parameter
+`name` metadata for display labels.
+
 ### Chain Architecture
 
 Chain host (`modules/chain/dsp/chain_host.c` — lifecycle/set+get_param/render; helpers split into `chain_{json,params,mod,midi,patch}.c`, shared decls in `chain_internal.h`) dlopens sub-plugins, forwards MIDI to sound generator, routes audio through FX. Patches in `/data/UserData/schwung/patches/*.json`. Built-in MIDI FX: chord, arp (up/down/up_down/random). Built-in audio FX: freeverb. MIDI sources can provide `ui_chain.js` for fullscreen chain UI.

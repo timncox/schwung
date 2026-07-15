@@ -336,7 +336,7 @@ console.log(msg)              // Routed to the unified logger when enabled
 | 55  | Up arrow          |                                |
 | 62  | Left arrow        |                                |
 | 63  | Right arrow       |                                |
-| 71-78 | Knobs 1-8       | Relative encoder (1-63 CW, 65-127 CCW) |
+| 71-78 | Knobs 1-8       | Relative encoder (1-63 CW, 65-127 CCW); assigned mappings rebase from the plugin's live value and stay synchronized with host parameter writes |
 | 79  | Master volume     | Relative encoder (1-63 CW, 65-127 CCW) |
 | 102-109 | Knobs 1-8 (absolute) | Absolute value (0-127 scaled to assigned param range); targets the same user-assigned knob mappings as CC 71-78 |
 | 85  | Play              |                                |

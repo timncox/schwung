@@ -1062,6 +1062,15 @@ int get_param(void *instance, const char *key, char *buf, int buf_len) {
 Use the canonical type list in `Shadow UI Parameter Hierarchy -> Parameter Types`.
 For `chain_params`, the same types apply, and `default`/`value` can be used to provide initial values.
 
+The Slot Settings knob picker uses each parameter's `name` (falling back to
+`label`, then the key). Momentary enum actions whose options are exactly
+`["idle", "trigger"]` are intentionally excluded: expose those in a hierarchy
+`params` list for click activation, but do not put them in `knobs`. Assigned
+relative knobs are initialized from the plugin's live value, and prefixed host
+writes keep their cached encoder value synchronized with the same target and
+parameter. This prevents a knob from jumping back to a manifest default after
+the value was changed on a hierarchy page, in a module UI, or through Remote UI.
+
 #### `filepath` in module.json
 
 Use `type: "filepath"` in `capabilities.chain_params` to let Shadow UI open a reusable file browser.
