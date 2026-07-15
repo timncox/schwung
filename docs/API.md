@@ -99,9 +99,18 @@ globalThis.onUnload = function() {
 globalThis.onResume = function() {
     // Invalidate LED delta-cache, force a full repaint, etc.
 }
+
+// Optional for suspend_keeps_js overtakes with internal modal screens.
+// Return true only while Back should be forwarded to the module instead of
+// suspending it; handle the forwarded press in onMidiMessageInternal().
+globalThis.wantsBack = function() {
+    return presetBrowserOpen || setupScreenOpen;
+}
 ```
 
 `onResume()` fires once each time a suspended `suspend_keeps_js` overtake module is brought back to the foreground — it is **not** called on first load (`init()` handles that). While the module is backgrounded its hardware LEDs were cleared, so the typical use is to invalidate any on-change LED delta-cache and force a full repaint on the next `tick()`. It is optional and opt-in: modules that do not define it are unaffected.
+
+`wantsBack()` is queried only when Back is pressed in an active `suspend_keeps_js` overtake. Return `true` while an internal preset browser, setup page, or similar modal needs to consume Back. The host then forwards the original Back MIDI message to `onMidiMessageInternal()`; when the callback returns `false` again, Back resumes its normal host-level suspend behavior. Keep this callback side-effect free.
 
 ## Menu Layout Helpers
 
@@ -460,6 +469,7 @@ The host tracks these inputs locally (independent of the shim) to ensure escape 
 | Shift (CC 49) | Tracked by host for escape; passed to module |
 | Volume touch (Note 8) | Tracked by host for escape; passed to module |
 | Jog click (CC 3) | If Shift+Vol held, triggers escape; otherwise passed to module |
+| Back (CC 51) | Suspends a `suspend_keeps_js` overtake unless its `wantsBack()` callback currently returns true; then passed to the module |
 | All other MIDI | Passed directly to module |
 
 Modules receive full MIDI access and can send to both internal (LEDs) and external (USB-A) targets.

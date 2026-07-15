@@ -66,6 +66,9 @@ Key choices:
 - `capabilities.suspend_keeps_js: true` — Back suspends the UI but the
   DSP keeps ticking; Shift+Back fully exits. Essential for a sequencer
   that should keep playing while the user browses Move.
+- If the sequencer has its own preset or setup modal, expose a side-effect-free
+  `globalThis.wantsBack()` that returns true while that modal is open. The host
+  then forwards Back to the module before restoring normal suspend behavior.
 - `capabilities.button_passthrough: [85]` — the Play button still
   reaches Move (so Move's transport stays in sync) while your module
   also handles its own play/stop.

@@ -81,6 +81,11 @@ globalThis.onMidiMessageInternal = function(data) { }   // Move hardware MIDI
 globalThis.onMidiMessageExternal = function(data) { }   // External USB MIDI (overtake only)
 ```
 
+Overtake modules may also provide `onUnload()`, `onResume()`, and a
+side-effect-free `wantsBack()` query. For `suspend_keeps_js` modules,
+`wantsBack()` can temporarily claim Back for an internal modal; returning
+false restores the host's normal Back-to-suspend behavior. See `docs/API.md`.
+
 `data` is a Uint8Array `[status, cc/note, value]`. Filter noise with `shouldFilterMessage()` from `input_filter.mjs`.
 
 Loading styles:

@@ -24,7 +24,7 @@ import {
     MoveKnob1, MoveKnob2, MoveKnob3, MoveKnob4,
     MoveKnob5, MoveKnob6, MoveKnob7, MoveKnob8,
     MoveKnob1Touch, MoveKnob8Touch,  // Capacitive touch notes (0-7)
-    MidiNoteOn
+    MidiNoteOn, MidiNoteOff
 } from '/data/UserData/schwung/shared/constants.mjs';
 
 import {
@@ -568,7 +568,7 @@ let overtakeModuleLoaded = false; // True if an overtake module is running
 let overtakeModulePath = "";      // Path to loaded overtake module
 let overtakeModuleId = "";         // ID of loaded overtake module (for per-module exit hooks)
 let previousView = VIEWS.SLOTS;   // View to return to after overtake
-let overtakeModuleCallbacks = null; // {init, tick, onMidiMessageInternal} for loaded module
+let overtakeModuleCallbacks = null; // {init, tick, onMidiMessageInternal, wantsBack, ...}
 let overtakeSuspendKeepsJs = false; // Current module opted in to JS-alive suspend
 let overtakePassthroughCCs = [];    // CCs declared in capabilities.button_passthrough — shim lets these
                                     // reach Move firmware directly, and we skip them during LED clear.
@@ -2957,6 +2957,23 @@ function invokeModuleOnResume(callbacks, moduleId) {
     }
 }
 
+/* Ask an overtake module whether the current Back press belongs to one of its
+ * own modal views. `suspend_keeps_js` normally reserves Back for the host, but
+ * preset browsers and setup screens need one level of local navigation before
+ * that host-level suspend behavior resumes. The callback is deliberately a
+ * side-effect-free query; the original MIDI message is forwarded normally
+ * when it returns true. */
+function overtakeModuleWantsBack() {
+    if (!overtakeModuleCallbacks ||
+        typeof overtakeModuleCallbacks.wantsBack !== "function") return false;
+    try {
+        return !!runToolCallback(overtakeModuleCallbacks.wantsBack);
+    } catch (e) {
+        debugLog("overtake wantsBack threw: " + e);
+        return false;
+    }
+}
+
 /* Enter the overtake module selection menu */
 function enterOvertakeMenu() {
     /* Flush set state before entering overtake — periodic autosave is gated
@@ -3463,6 +3480,7 @@ function loadOvertakeModule(moduleInfo, skipOvertake) {
         const savedInit = globalThis.init;
         const savedTick = globalThis.tick;
         const savedMidi = globalThis.onMidiMessageInternal;
+        const savedWantsBack = globalThis.wantsBack;
 
         overtakeModulePath = moduleInfo.uiPath;
         overtakeModuleId = moduleInfo.id || "";
@@ -3570,6 +3588,11 @@ function loadOvertakeModule(moduleInfo, skipOvertake) {
             const result = shadow_load_ui_module(moduleInfo.uiPath);
             debugLog("loadOvertakeModule: shadow_load_ui_module returned " + result);
             if (!result) {
+                globalThis.init = savedInit;
+                globalThis.tick = savedTick;
+                globalThis.onMidiMessageInternal = savedMidi;
+                if (savedWantsBack === undefined) delete globalThis.wantsBack;
+                else globalThis.wantsBack = savedWantsBack;
                 deactivateLedQueue();
                 overtakeModuleLoaded = false;
                 overtakeModuleCallbacks = null;
@@ -3583,6 +3606,8 @@ function loadOvertakeModule(moduleInfo, skipOvertake) {
             }
         } else {
             debugLog("loadOvertakeModule: shadow_load_ui_module not available");
+            if (savedWantsBack === undefined) delete globalThis.wantsBack;
+            else globalThis.wantsBack = savedWantsBack;
             deactivateLedQueue();
             delete globalThis.host_module_set_param;
             delete globalThis.host_module_get_param;
@@ -3594,6 +3619,7 @@ function loadOvertakeModule(moduleInfo, skipOvertake) {
             init: (globalThis.init !== savedInit) ? globalThis.init : null,
             tick: (globalThis.tick !== savedTick) ? globalThis.tick : null,
             onMidiMessageInternal: (globalThis.onMidiMessageInternal !== savedMidi) ? globalThis.onMidiMessageInternal : null,
+            wantsBack: (globalThis.wantsBack !== savedWantsBack) ? globalThis.wantsBack : null,
             onUnload: (typeof globalThis.onUnload === "function") ? globalThis.onUnload : null,
             /* onResume(): optional. Called once each time the module is
              * resumed from suspend (init() is NOT re-run). See
@@ -3605,6 +3631,8 @@ function loadOvertakeModule(moduleInfo, skipOvertake) {
         globalThis.init = savedInit;
         globalThis.tick = savedTick;
         globalThis.onMidiMessageInternal = savedMidi;
+        if (savedWantsBack === undefined) delete globalThis.wantsBack;
+        else globalThis.wantsBack = savedWantsBack;
         if (typeof globalThis.onUnload === "function") delete globalThis.onUnload;
         if (typeof globalThis.onResume === "function") delete globalThis.onResume;
 
@@ -5490,6 +5518,7 @@ function startInteractiveTool(toolModule, filePath) {
             const savedInit = globalThis.init;
             const savedTick = globalThis.tick;
             const savedMidi = globalThis.onMidiMessageInternal;
+            const savedWantsBack = globalThis.wantsBack;
 
             /* Reinstall shims before loading the ES module.
              * QuickJS resolves bare global identifiers at compile time,
@@ -5542,6 +5571,11 @@ function startInteractiveTool(toolModule, filePath) {
                 const result = shadow_load_ui_module(uiPath);
                 debugLog("startInteractiveTool reconnect: shadow_load_ui_module returned " + result);
                 if (!result) {
+                    globalThis.init = savedInit;
+                    globalThis.tick = savedTick;
+                    globalThis.onMidiMessageInternal = savedMidi;
+                    if (savedWantsBack === undefined) delete globalThis.wantsBack;
+                    else globalThis.wantsBack = savedWantsBack;
                     debugLog("startInteractiveTool reconnect: failed to load UI");
                     toolOvertakeActive = false;
                     setView(VIEWS.TOOL_RESULT);
@@ -5551,6 +5585,8 @@ function startInteractiveTool(toolModule, filePath) {
                     return;
                 }
             } else {
+                if (savedWantsBack === undefined) delete globalThis.wantsBack;
+                else globalThis.wantsBack = savedWantsBack;
                 debugLog("startInteractiveTool reconnect: shadow_load_ui_module not available");
                 toolOvertakeActive = false;
                 setView(VIEWS.TOOL_RESULT);
@@ -5565,6 +5601,7 @@ function startInteractiveTool(toolModule, filePath) {
                 init: (globalThis.init !== savedInit) ? globalThis.init : null,
                 tick: (globalThis.tick !== savedTick) ? globalThis.tick : null,
                 onMidiMessageInternal: (globalThis.onMidiMessageInternal !== savedMidi) ? globalThis.onMidiMessageInternal : null,
+                wantsBack: (globalThis.wantsBack !== savedWantsBack) ? globalThis.wantsBack : null,
                 onUnload: (typeof globalThis.onUnload === "function") ? globalThis.onUnload : null,
                 /* onResume(): optional. Called once each time the module is
                  * resumed from suspend (init() is NOT re-run). See
@@ -5574,6 +5611,8 @@ function startInteractiveTool(toolModule, filePath) {
             globalThis.init = savedInit;
             globalThis.tick = savedTick;
             globalThis.onMidiMessageInternal = savedMidi;
+            if (savedWantsBack === undefined) delete globalThis.wantsBack;
+            else globalThis.wantsBack = savedWantsBack;
             if (typeof globalThis.onUnload === "function") delete globalThis.onUnload;
             if (typeof globalThis.onResume === "function") delete globalThis.onResume;
             debugLog("startInteractiveTool reconnect: callbacks captured - init:" + !!overtakeModuleCallbacks.init +
@@ -15214,11 +15253,13 @@ globalThis.onMidiMessageInternal = function(data) {
             hostShiftHeld = (d2 > 0);
         }
 
-        /* Track volume knob touch for Shift+Vol+Jog escape detection */
-        if ((status & 0xF0) === MidiNoteOn) {
-            if (d1 === VOLUME_TOUCH_NOTE) {
-                hostVolumeKnobTouched = (d2 > 0);
-            }
+        /* Track both possible release encodings for the volume touch sensor.
+         * Move may send either Note On velocity 0 or a real Note Off. Ignoring
+         * the latter latches the emergency Shift+Vol+Jog chord after the user
+         * lets go, so a later ordinary Shift+Jog click exits unexpectedly. */
+        if (((status & 0xF0) === MidiNoteOn ||
+             (status & 0xF0) === MidiNoteOff) && d1 === VOLUME_TOUCH_NOTE) {
+            hostVolumeKnobTouched = (status & 0xF0) === MidiNoteOn && d2 > 0;
         }
 
         /* Debug: log key state */
@@ -15243,16 +15284,20 @@ globalThis.onMidiMessageInternal = function(data) {
          * Back alone: suspend (module parks in background, ticks continue).
          * Shift+Back: full exit (unload module).
          * Skip while co-run is active: the chain editor claims Back. */
-        if ((status & 0xF0) === 0xB0 && d1 === MoveBack && d2 > 0 && overtakeSuspendKeepsJs && !coRunUiActive()) {
-            if (hostShiftHeld) {
-                debugLog("HOST: Shift+Back → full exit (suspend_keeps_js module)");
-                if (toolOvertakeActive) exitToolOvertake();
-                else exitOvertakeMode();
-            } else {
-                debugLog("HOST: Back → suspend (module parks in background)");
-                suspendOvertakeMode();
+        if ((status & 0xF0) === 0xB0 && d1 === MoveBack && d2 > 0 &&
+            overtakeSuspendKeepsJs && !coRunUiActive()) {
+            if (!overtakeModuleWantsBack()) {
+                if (hostShiftHeld) {
+                    debugLog("HOST: Shift+Back → full exit (suspend_keeps_js module)");
+                    if (toolOvertakeActive) exitToolOvertake();
+                    else exitOvertakeMode();
+                } else {
+                    debugLog("HOST: Back → suspend (module parks in background)");
+                    suspendOvertakeMode();
+                }
+                return;
             }
-            return;
+            debugLog("HOST: Back claimed by overtake module modal");
         }
 
         /* CO-RUN: intercept chain-editor navigation CCs (jog turn, jog click,
