@@ -421,6 +421,8 @@ CHAIN_INTERNAL int format_param_value(chain_param_info_t *param, float value, ch
 CHAIN_INTERNAL int is_smoothable_float(const char *val, float *out_value);
 CHAIN_INTERNAL chain_param_info_t *knob_find_param(chain_instance_t *inst, const char *target, const char *param);
 CHAIN_INTERNAL void knob_forward_value(chain_instance_t *inst, const char *target, const char *param, const char *val_str);
+CHAIN_INTERNAL int knob_read_current_value(chain_instance_t *inst, const char *target, const char *param, chain_param_info_t *pinfo, float fallback, float *out_value);
+CHAIN_INTERNAL void knob_sync_mapped_value(chain_instance_t *inst, const char *target, const char *param, const char *val_str);
 CHAIN_INTERNAL int parse_chain_params(const char *module_path, chain_param_info_t *params, int *count);
 CHAIN_INTERNAL int parse_chain_params_array_json(const char *json_array, chain_param_info_t *params, int max_params);
 CHAIN_INTERNAL int parse_ui_hierarchy_cache(const char *module_path, char *out, int out_len);

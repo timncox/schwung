@@ -866,21 +866,9 @@ chain_param_info_t *find_param_info(chain_param_info_t *params, int count, const
     return NULL;
 }
 
-/* Look up param metadata from a knob mapping's target string (synth/fx1-3/midi_fx1-2). */
+/* Look up param metadata from a knob mapping's target string. */
 chain_param_info_t *knob_find_param(chain_instance_t *inst, const char *target, const char *param) {
-    if (strcmp(target, "synth") == 0)
-        return find_param_info(inst->synth_params, inst->synth_param_count, param);
-    if (strcmp(target, "fx1") == 0 && inst->fx_count > 0)
-        return find_param_info(inst->fx_params[0], inst->fx_param_counts[0], param);
-    if (strcmp(target, "fx2") == 0 && inst->fx_count > 1)
-        return find_param_info(inst->fx_params[1], inst->fx_param_counts[1], param);
-    if (strcmp(target, "fx3") == 0 && inst->fx_count > 2)
-        return find_param_info(inst->fx_params[2], inst->fx_param_counts[2], param);
-    if (strcmp(target, "midi_fx1") == 0 && inst->midi_fx_count > 0)
-        return find_param_info(inst->midi_fx_params[0], inst->midi_fx_param_counts[0], param);
-    if (strcmp(target, "midi_fx2") == 0 && inst->midi_fx_count > 1)
-        return find_param_info(inst->midi_fx_params[1], inst->midi_fx_param_counts[1], param);
-    return NULL;
+    return find_param_by_key(inst, target, param);
 }
 
 /* Forward a formatted value string to the plugin identified by target. */
@@ -888,21 +876,83 @@ void knob_forward_value(chain_instance_t *inst, const char *target, const char *
     if (strcmp(target, "synth") == 0) {
         if (inst->synth_plugin_v2 && inst->synth_instance && inst->synth_plugin_v2->set_param)
             inst->synth_plugin_v2->set_param(inst->synth_instance, param, val_str);
-    } else if (strcmp(target, "fx1") == 0 && inst->fx_count > 0) {
-        if (inst->fx_is_v2[0] && inst->fx_plugins_v2[0] && inst->fx_instances[0])
-            inst->fx_plugins_v2[0]->set_param(inst->fx_instances[0], param, val_str);
-    } else if (strcmp(target, "fx2") == 0 && inst->fx_count > 1) {
-        if (inst->fx_is_v2[1] && inst->fx_plugins_v2[1] && inst->fx_instances[1])
-            inst->fx_plugins_v2[1]->set_param(inst->fx_instances[1], param, val_str);
-    } else if (strcmp(target, "fx3") == 0 && inst->fx_count > 2) {
-        if (inst->fx_is_v2[2] && inst->fx_plugins_v2[2] && inst->fx_instances[2])
-            inst->fx_plugins_v2[2]->set_param(inst->fx_instances[2], param, val_str);
-    } else if (strcmp(target, "midi_fx1") == 0 && inst->midi_fx_count > 0) {
-        if (inst->midi_fx_plugins[0] && inst->midi_fx_instances[0] && inst->midi_fx_plugins[0]->set_param)
-            inst->midi_fx_plugins[0]->set_param(inst->midi_fx_instances[0], param, val_str);
-    } else if (strcmp(target, "midi_fx2") == 0 && inst->midi_fx_count > 1) {
-        if (inst->midi_fx_plugins[1] && inst->midi_fx_instances[1] && inst->midi_fx_plugins[1]->set_param)
-            inst->midi_fx_plugins[1]->set_param(inst->midi_fx_instances[1], param, val_str);
+    } else if (strncmp(target, "fx", 2) == 0) {
+        int slot = atoi(target + 2) - 1;
+        if (slot >= 0 && slot < inst->fx_count && slot < MAX_AUDIO_FX &&
+            inst->fx_is_v2[slot] && inst->fx_plugins_v2[slot] &&
+            inst->fx_instances[slot] && inst->fx_plugins_v2[slot]->set_param) {
+            inst->fx_plugins_v2[slot]->set_param(inst->fx_instances[slot], param, val_str);
+        }
+    } else if (strncmp(target, "midi_fx", 7) == 0) {
+        int slot = atoi(target + 7) - 1;
+        if (slot >= 0 && slot < inst->midi_fx_count && slot < MAX_MIDI_FX &&
+            inst->midi_fx_plugins[slot] && inst->midi_fx_instances[slot] &&
+            inst->midi_fx_plugins[slot]->set_param) {
+            inst->midi_fx_plugins[slot]->set_param(inst->midi_fx_instances[slot], param, val_str);
+        }
+    }
+}
+
+/* Read a mapped parameter's real value from its plugin. Assigned knobs keep a
+ * cached value for relative encoder math, but the same parameter can also be
+ * edited by hierarchy pages, Remote UI, presets, or module-specific UIs. */
+int knob_read_current_value(chain_instance_t *inst, const char *target, const char *param,
+                            chain_param_info_t *pinfo, float fallback, float *out_value) {
+    if (!inst || !target || !param || !out_value) return 0;
+
+    char val_buf[64];
+    int got = -1;
+    if (strcmp(target, "synth") == 0 && inst->synth_plugin_v2 &&
+        inst->synth_instance && inst->synth_plugin_v2->get_param) {
+        got = inst->synth_plugin_v2->get_param(inst->synth_instance, param,
+                                               val_buf, sizeof(val_buf));
+    } else if (strncmp(target, "fx", 2) == 0) {
+        int slot = atoi(target + 2) - 1;
+        if (slot >= 0 && slot < inst->fx_count && slot < MAX_AUDIO_FX &&
+            inst->fx_is_v2[slot] && inst->fx_plugins_v2[slot] &&
+            inst->fx_instances[slot] && inst->fx_plugins_v2[slot]->get_param) {
+            got = inst->fx_plugins_v2[slot]->get_param(inst->fx_instances[slot], param,
+                                                       val_buf, sizeof(val_buf));
+        }
+    } else if (strncmp(target, "midi_fx", 7) == 0) {
+        int slot = atoi(target + 7) - 1;
+        if (slot >= 0 && slot < inst->midi_fx_count && slot < MAX_MIDI_FX &&
+            inst->midi_fx_plugins[slot] && inst->midi_fx_instances[slot] &&
+            inst->midi_fx_plugins[slot]->get_param) {
+            got = inst->midi_fx_plugins[slot]->get_param(inst->midi_fx_instances[slot], param,
+                                                         val_buf, sizeof(val_buf));
+        }
+    }
+
+    if (got <= 0) return 0;
+    float value = dsp_value_to_float(val_buf, pinfo, fallback);
+    if (pinfo) {
+        if (value < pinfo->min_val) value = pinfo->min_val;
+        if (value > pinfo->max_val) value = pinfo->max_val;
+    }
+    *out_value = value;
+    return 1;
+}
+
+/* Keep assigned relative-knob caches aligned when another host surface writes
+ * the same parameter. This path is allocation-free and does not call back into
+ * a plugin, so it is safe in v2_set_param's SPI-thread context. */
+void knob_sync_mapped_value(chain_instance_t *inst, const char *target,
+                            const char *param, const char *val_str) {
+    if (!inst || !target || !param || !val_str) return;
+    chain_param_info_t *pinfo = knob_find_param(inst, target, param);
+
+    for (int i = 0; i < inst->knob_mapping_count; i++) {
+        knob_mapping_t *mapping = &inst->knob_mappings[i];
+        if (strcmp(mapping->target, target) != 0 || strcmp(mapping->param, param) != 0) {
+            continue;
+        }
+        float value = dsp_value_to_float(val_str, pinfo, mapping->current_value);
+        if (pinfo) {
+            if (value < pinfo->min_val) value = pinfo->min_val;
+            if (value > pinfo->max_val) value = pinfo->max_val;
+        }
+        mapping->current_value = value;
     }
 }
 
@@ -1060,4 +1110,3 @@ chain_param_info_t* find_param_by_key(chain_instance_t *inst, const char *target
 }
 
 /* V2 get_param handler */
-

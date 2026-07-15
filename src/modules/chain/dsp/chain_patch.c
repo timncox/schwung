@@ -1467,28 +1467,11 @@ int v2_load_from_patch_info(chain_instance_t *inst, patch_info_t *patch) {
         const char *target = inst->knob_mappings[i].target;
         const char *param = inst->knob_mappings[i].param;
 
-        char val_buf[64];
-        int got = -1;
-        if (strcmp(target, "synth") == 0 && inst->synth_plugin_v2 && inst->synth_instance) {
-            got = inst->synth_plugin_v2->get_param(inst->synth_instance, param, val_buf, sizeof(val_buf));
-        } else if (strcmp(target, "fx1") == 0 && inst->fx_count > 0 &&
-                   inst->fx_is_v2[0] && inst->fx_plugins_v2[0] && inst->fx_instances[0]) {
-            got = inst->fx_plugins_v2[0]->get_param(inst->fx_instances[0], param, val_buf, sizeof(val_buf));
-        } else if (strcmp(target, "fx2") == 0 && inst->fx_count > 1 &&
-                   inst->fx_is_v2[1] && inst->fx_plugins_v2[1] && inst->fx_instances[1]) {
-            got = inst->fx_plugins_v2[1]->get_param(inst->fx_instances[1], param, val_buf, sizeof(val_buf));
-        } else if (strcmp(target, "midi_fx1") == 0 && inst->midi_fx_count > 0 &&
-                   inst->midi_fx_plugins[0] && inst->midi_fx_instances[0]) {
-            got = inst->midi_fx_plugins[0]->get_param(inst->midi_fx_instances[0], param, val_buf, sizeof(val_buf));
-        } else if (strcmp(target, "midi_fx2") == 0 && inst->midi_fx_count > 1 &&
-                   inst->midi_fx_plugins[1] && inst->midi_fx_instances[1]) {
-            got = inst->midi_fx_plugins[1]->get_param(inst->midi_fx_instances[1], param, val_buf, sizeof(val_buf));
-        }
-
         chain_param_info_t *pinfo = find_param_by_key(inst, target, param);
-        if (got > 0) {
-            inst->knob_mappings[i].current_value = dsp_value_to_float(
-                val_buf, pinfo, pinfo ? (pinfo->min_val + pinfo->max_val) / 2.0f : 0.5f);
+        float fallback = pinfo ? (pinfo->min_val + pinfo->max_val) / 2.0f : 0.5f;
+        float current = fallback;
+        if (knob_read_current_value(inst, target, param, pinfo, fallback, &current)) {
+            inst->knob_mappings[i].current_value = current;
         } else if (pinfo) {
             /* No DSP read — use saved value or midpoint */
             float saved = patch->knob_mappings[i].current_value;
@@ -1541,5 +1524,4 @@ int v2_load_patch(chain_instance_t *inst, int patch_idx) {
     }
     return rc;
 }
-
 

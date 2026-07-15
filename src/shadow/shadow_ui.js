@@ -6946,9 +6946,49 @@ function getKnobTargets(slot) {
     return targets;
 }
 
+function getKnobParamMetaMap(slot, target) {
+    const metaByKey = new Map();
+    const chainParamsJson = getSlotParam(slot, `${target}:chain_params`);
+    if (!chainParamsJson) return metaByKey;
+
+    try {
+        const chainParams = JSON.parse(chainParamsJson);
+        if (Array.isArray(chainParams)) {
+            for (const param of chainParams) {
+                if (param && param.key) metaByKey.set(param.key, param);
+            }
+        }
+    } catch (e) {
+        /* Invalid metadata is handled by the hierarchy and legacy fallbacks. */
+    }
+    return metaByKey;
+}
+
+function getKnobPickerParamInfo(entry, metaByKey) {
+    const key = typeof entry === "string" ? entry : (entry && entry.key ? entry.key : "");
+    if (!key) return null;
+
+    const inlineMeta = (entry && typeof entry === "object") ? entry : null;
+    const chainMeta = metaByKey.get(key) || null;
+    const triggerMeta = (inlineMeta && isTriggerEnumMeta(inlineMeta)) ? inlineMeta : chainMeta;
+    if (isTriggerEnumMeta(triggerMeta)) return null;
+
+    return {
+        key,
+        label: (inlineMeta && (inlineMeta.name || inlineMeta.label)) ||
+               (chainMeta && (chainMeta.name || chainMeta.label)) ||
+               key.replace(/_/g, " ")
+    };
+}
+
 /* Get available params for a target via ui_hierarchy or known params */
 function getKnobParamsForTarget(slot, target) {
     const params = [];
+    const metaByKey = getKnobParamMetaMap(slot, target);
+    const addParam = (entry) => {
+        const info = getKnobPickerParamInfo(entry, metaByKey);
+        if (info && !params.find(param => param.key === info.key)) params.push(info);
+    };
 
     /* Try to get params from ui_hierarchy */
     const hierarchy = getSlotParam(slot, `${target}:ui_hierarchy`);
@@ -6961,30 +7001,14 @@ function getKnobParamsForTarget(slot, target) {
                     const level = hier.levels[levelName];
                     if (level.knobs && Array.isArray(level.knobs)) {
                         for (const knob of level.knobs) {
-                            /* knob can be just a param name or a {key, label} object */
-                            if (typeof knob === "string") {
-                                if (!params.find(p => p.key === knob)) {
-                                    params.push({ key: knob, label: knob });
-                                }
-                            } else if (knob.key) {
-                                if (!params.find(p => p.key === knob.key)) {
-                                    params.push({ key: knob.key, label: knob.label || knob.key });
-                                }
-                            }
+                            /* knob can be a param name or an inline metadata object */
+                            addParam(knob);
                         }
                     }
                     /* Also check params array */
                     if (level.params && Array.isArray(level.params)) {
                         for (const p of level.params) {
-                            if (typeof p === "string") {
-                                if (!params.find(pp => pp.key === p)) {
-                                    params.push({ key: p, label: p });
-                                }
-                            } else if (p.key) {
-                                if (!params.find(pp => pp.key === p.key)) {
-                                    params.push({ key: p.key, label: p.label || p.key });
-                                }
-                            }
+                            addParam(p);
                         }
                     }
                 }
@@ -6996,22 +7020,7 @@ function getKnobParamsForTarget(slot, target) {
 
     /* Fall back to chain_params metadata before using hardcoded defaults */
     if (params.length === 0) {
-        const chainParamsJson = getSlotParam(slot, `${target}:chain_params`);
-        if (chainParamsJson) {
-            try {
-                const chainParams = JSON.parse(chainParamsJson);
-                if (Array.isArray(chainParams)) {
-                    for (const p of chainParams) {
-                        if (!p || !p.key) continue;
-                        if (!params.find(pp => pp.key === p.key)) {
-                            params.push({ key: p.key, label: p.name || p.label || p.key });
-                        }
-                    }
-                }
-            } catch (e) {
-                /* Parse error, continue to legacy hardcoded fallback */
-            }
-        }
+        for (const param of metaByKey.values()) addParam(param);
     }
 
     /* If no params from hierarchy, use known defaults */
@@ -7413,6 +7422,7 @@ function getKnobPickerLevelItems(hierarchy, levelName) {
     }
     const level = hierarchy.levels[levelName];
     const componentPrefix = knobParamPickerFolder || "";
+    const metaByKey = getKnobParamMetaMap(knobEditorSlot, componentPrefix);
     const isVisible = (entry) => {
         if (!entry || typeof entry !== "object") return true;
         if (entry.visible_if &&
@@ -7438,14 +7448,16 @@ function getKnobPickerLevelItems(hierarchy, levelName) {
             if (!isVisible(p)) continue;
             if (typeof p === "string") {
                 /* Simple param name */
-                items.push({ type: "param", key: p, label: p });
+                const info = getKnobPickerParamInfo(p, metaByKey);
+                if (info) items.push({ type: "param", ...info });
             } else if (p && typeof p === "object") {
                 if (p.level) {
                     /* Navigation item - drill into another level */
-                    items.push({ type: "nav", level: p.level, label: p.label || p.level });
+                    items.push({ type: "nav", level: p.level, label: p.name || p.label || p.level });
                 } else if (p.key) {
                     /* Param with label */
-                    items.push({ type: "param", key: p.key, label: p.label || p.key });
+                    const info = getKnobPickerParamInfo(p, metaByKey);
+                    if (info) items.push({ type: "param", ...info });
                 }
             }
         }
@@ -7454,11 +7466,8 @@ function getKnobPickerLevelItems(hierarchy, levelName) {
     /* If no params but has knobs, use knobs as params */
     if (items.length === 0 && level.knobs && Array.isArray(level.knobs)) {
         for (const k of level.knobs) {
-            if (typeof k === "string") {
-                items.push({ type: "param", key: k, label: k });
-            } else if (k && k.key) {
-                items.push({ type: "param", key: k.key, label: k.label || k.key });
-            }
+            const info = getKnobPickerParamInfo(k, metaByKey);
+            if (info) items.push({ type: "param", ...info });
         }
     }
 
