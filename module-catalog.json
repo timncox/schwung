@@ -1080,6 +1080,28 @@
       "min_host_version": "0.7.11"
     },
     {
+      "id": "mono-voice",
+      "name": "Mono Voice",
+      "description": "Monomachine-inspired digital machine voice with SuperWave, SID, DigiPRO, and FM engines, Shift parameter banks, and three assignable LFOs",
+      "author": "timncox",
+      "component_type": "sound_generator",
+      "github_repo": "timncox/schwung-mono",
+      "default_branch": "main",
+      "asset_name": "mono-voice-module.tar.gz",
+      "min_host_version": "0.11.4"
+    },
+    {
+      "id": "mono",
+      "name": "Mono",
+      "description": "Six-track Monomachine-inspired instrument with digital machine synthesis and a 64-step parameter-lock sequencer",
+      "author": "timncox",
+      "component_type": "overtake",
+      "github_repo": "timncox/schwung-mono",
+      "default_branch": "main",
+      "asset_name": "mono-module.tar.gz",
+      "min_host_version": "0.11.4"
+    },
+    {
       "id": "smack",
       "name": "Smack",
       "description": "Quantized live-loop capture with 26 seeded per-slice glitch effects, slice reordering, A/B punch, step editing, and Pad Play",
