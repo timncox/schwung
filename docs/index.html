@@ -1,0 +1,305 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Schwung Modules by Tim Cox — Instruments &amp; FX for Ableton Move</title>
+<meta name="description" content="Free, open-source Schwung modules for the Ableton Move by Tim Cox: Smack (seeded loop glitcher), Belt (live vocal processor), Mark (five-track live looper), and Mono (Monomachine-inspired six-track synth).">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🎛️</text></svg>">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Big+Shoulders+Display:wght@500;700;900&family=Archivo:wght@400;500;600;700&family=Martian+Mono:wght@400;700&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#0c0b09; --panel:#14120e; --panel2:#191611; --ink:#e8e2d5; --dim:#968d7a;
+  --line:rgba(232,226,213,.13); --line2:rgba(232,226,213,.07);
+  --smack:#ff7733; --belt:#d8551a; --mark:#4dd06a; --mono-acc:#b5ff9e;
+  --disp:"Big Shoulders Display",Impact,sans-serif;
+  --monoft:"Martian Mono","SFMono-Regular",Consolas,monospace;
+  --body:"Archivo","Helvetica Neue",sans-serif;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html{scroll-behavior:smooth}
+body{background:var(--bg);color:var(--ink);font-family:var(--body);font-size:16px;line-height:1.6;overflow-x:hidden}
+body::before{
+  content:"";position:fixed;inset:0;z-index:0;pointer-events:none;
+  background-image:
+    repeating-linear-gradient(0deg,var(--line2) 0 1px,transparent 1px 64px),
+    repeating-linear-gradient(90deg,var(--line2) 0 1px,transparent 1px 64px);
+  mask-image:radial-gradient(ellipse 90% 70% at 50% 0%,#000 0%,transparent 75%);
+  -webkit-mask-image:radial-gradient(ellipse 90% 70% at 50% 0%,#000 0%,transparent 75%);
+}
+body::after{
+  content:"";position:fixed;inset:0;z-index:99;pointer-events:none;opacity:.05;
+  background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='2'/%3E%3C/filter%3E%3Crect width='160' height='160' filter='url(%23n)'/%3E%3C/svg%3E");
+}
+a{color:inherit;text-decoration:none}
+code,kbd{font-family:var(--monoft);font-size:.82em;background:var(--panel2);border:1px solid var(--line);border-radius:4px;padding:.1em .4em;white-space:nowrap}
+.wrap{max-width:1100px;margin:0 auto;padding:0 24px;position:relative;z-index:1}
+
+/* ---------- nav ---------- */
+nav{position:sticky;top:0;z-index:50;background:rgba(12,11,9,.88);backdrop-filter:blur(8px);border-bottom:1px solid var(--line)}
+nav .wrap{display:flex;align-items:center;gap:18px;height:52px;overflow-x:auto;scrollbar-width:none}
+nav .wrap::-webkit-scrollbar{display:none}
+nav .logo{font-family:var(--disp);font-weight:900;font-size:22px;letter-spacing:.04em;flex:none}
+nav .logo em{color:var(--smack);font-style:normal}
+nav a.s{font-family:var(--monoft);font-size:10.5px;letter-spacing:.06em;color:var(--dim);flex:none;text-transform:uppercase;padding:4px 0}
+nav a.s:hover{color:var(--ink)}
+
+/* ---------- masthead ---------- */
+header{padding:72px 0 40px}
+.kicker{font-family:var(--monoft);font-size:12px;letter-spacing:.28em;color:var(--smack);text-transform:uppercase;margin-bottom:10px}
+h1.title{font-family:var(--disp);font-weight:900;line-height:.85;font-size:clamp(64px,13vw,180px);letter-spacing:.01em;text-transform:uppercase}
+.subtitle{font-family:var(--disp);font-weight:500;font-size:clamp(20px,3.2vw,32px);letter-spacing:.14em;text-transform:uppercase;color:var(--dim);margin-top:14px}
+.chips{display:flex;flex-wrap:wrap;gap:8px;margin-top:22px}
+.chip{font-family:var(--monoft);font-size:11px;letter-spacing:.05em;padding:5px 10px;border:1px solid var(--line);border-radius:999px;color:var(--dim)}
+.chip b{color:var(--ink);font-weight:400}
+.lede{max-width:680px;margin-top:26px;font-size:18px}
+.lede a{color:var(--smack);border-bottom:1px solid rgba(255,119,51,.35)}
+.lede a:hover{border-bottom-color:var(--smack)}
+
+/* ---------- family sections ---------- */
+section.family{padding:56px 0 8px;border-top:1px solid var(--line);margin-top:48px}
+.fam-head{display:flex;align-items:baseline;gap:16px;flex-wrap:wrap}
+.fam-head .emoji{font-size:34px;line-height:1}
+.fam-head h2{font-family:var(--disp);font-weight:900;font-size:clamp(44px,7vw,84px);letter-spacing:.02em;text-transform:uppercase;line-height:.9}
+.fam-head .tag{font-family:var(--monoft);font-size:12px;letter-spacing:.18em;text-transform:uppercase;color:var(--dim)}
+.fam-lede{max-width:680px;margin-top:14px;color:var(--ink)}
+.fam-links{display:flex;flex-wrap:wrap;gap:10px;margin-top:18px}
+.btn{font-family:var(--monoft);font-size:11.5px;letter-spacing:.08em;text-transform:uppercase;padding:9px 16px;border:1px solid var(--line);border-radius:6px;color:var(--ink);transition:border-color .15s,color .15s}
+.btn:hover{border-color:var(--famacc)}
+.btn.primary{border-color:var(--famacc);color:var(--famacc)}
+.cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:16px;margin-top:26px}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:22px 22px 18px;position:relative;overflow:hidden}
+.card::before{content:"";position:absolute;left:0;top:0;bottom:0;width:3px;background:var(--famacc)}
+.card h3{font-family:var(--disp);font-weight:700;font-size:30px;letter-spacing:.03em;text-transform:uppercase}
+.meta{display:flex;flex-wrap:wrap;gap:8px;margin:8px 0 12px}
+.badge{font-family:var(--monoft);font-size:10px;letter-spacing:.1em;text-transform:uppercase;padding:3px 8px;border-radius:4px;border:1px solid var(--famacc);color:var(--famacc)}
+.ver{font-family:var(--monoft);font-size:10px;letter-spacing:.1em;padding:3px 8px;border-radius:4px;border:1px solid var(--line);color:var(--dim)}
+.card p{color:var(--ink);font-size:15px;margin-bottom:10px}
+.card ul{list-style:none;margin:0 0 12px}
+.card li{font-size:13.5px;color:var(--dim);padding-left:16px;position:relative;margin-bottom:4px}
+.card li::before{content:"▸";position:absolute;left:0;color:var(--famacc)}
+.install{font-family:var(--monoft);font-size:11px;color:var(--dim);line-height:1.8;border-top:1px solid var(--line2);padding-top:10px;margin-top:auto}
+.install a{color:var(--ink);border-bottom:1px solid var(--line)}
+.install a:hover{border-bottom-color:var(--famacc)}
+#smack{--famacc:var(--smack)} #belt{--famacc:var(--belt)} #mark{--famacc:var(--mark)} #mono{--famacc:var(--mono-acc)}
+
+/* ---------- install / footer ---------- */
+#get-started{padding:64px 0 24px;border-top:1px solid var(--line);margin-top:56px}
+#get-started h2{font-family:var(--disp);font-weight:900;font-size:clamp(40px,6vw,72px);text-transform:uppercase;letter-spacing:.02em}
+.steps{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:16px;margin-top:26px}
+.step{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:20px}
+.step .n{font-family:var(--disp);font-weight:900;font-size:34px;color:var(--smack)}
+.step h3{font-family:var(--disp);font-weight:700;font-size:22px;text-transform:uppercase;letter-spacing:.05em;margin:4px 0 8px}
+.step p{font-size:14px;color:var(--dim)}
+.step a{color:var(--ink);border-bottom:1px solid var(--line)}
+.step a:hover{border-bottom-color:var(--smack)}
+footer{border-top:1px solid var(--line);margin-top:56px;padding:28px 0 48px}
+footer .wrap{display:flex;flex-wrap:wrap;gap:12px 24px;align-items:center;justify-content:space-between}
+footer p{font-family:var(--monoft);font-size:11px;letter-spacing:.06em;color:var(--dim)}
+footer a{color:var(--ink);border-bottom:1px solid var(--line)}
+footer a:hover{border-bottom-color:var(--smack)}
+</style>
+</head>
+<body>
+
+<nav><div class="wrap">
+  <a class="logo" href="#top">TIMNCOX<em>//</em>MODULES</a>
+  <a class="s" href="#smack">Smack</a>
+  <a class="s" href="#belt">Belt</a>
+  <a class="s" href="#mark">Mark</a>
+  <a class="s" href="#mono">Mono</a>
+  <a class="s" href="#get-started">Install</a>
+  <a class="s" href="https://github.com/timncox">GitHub</a>
+</div></nav>
+
+<header id="top"><div class="wrap">
+  <div class="kicker">Tim Cox · Schwung · Ableton Move</div>
+  <h1 class="title">Modules</h1>
+  <div class="subtitle">Instruments &amp; effects for the Ableton Move</div>
+  <div class="chips">
+    <span class="chip"><b>8</b> modules</span>
+    <span class="chip"><b>4</b> families</span>
+    <span class="chip">free &amp; open source</span>
+    <span class="chip">MIT licensed</span>
+    <span class="chip">interactive manuals</span>
+  </div>
+  <p class="lede">Loop glitching, live vocal processing, performance looping, and a
+  six-track machine synth — all running natively on the Move via
+  <a href="https://github.com/charlesvestal/schwung">Schwung</a>, the framework for
+  custom modules on Ableton Move hardware. Every module ships with a full
+  interactive operation manual and on-device help.</p>
+</div></header>
+
+<!-- ================= SMACK ================= -->
+<section class="family" id="smack"><div class="wrap">
+  <div class="fam-head"><span class="emoji">👊</span><h2>Smack</h2><span class="tag">Seeded loop glitcher · three builds, one core</span></div>
+  <p class="fam-lede">Grab a quantized loop of live audio, auto-slice it, and let
+  seeded randomness assign glitch effects and a new play order to the slices.
+  Inspired by Sugar Bytes Looperator and dblue Glitch — patterns repeat identically
+  every pass until you re-roll, and the Seed knob browses them by number.</p>
+  <div class="fam-links">
+    <a class="btn primary" href="https://timncox.github.io/schwung-smack/">📖 Operation manual</a>
+    <a class="btn" href="https://github.com/timncox/schwung-smack">Source</a>
+  </div>
+  <div class="cards">
+    <div class="card">
+      <h3>Smack</h3>
+      <div class="meta"><span class="badge">Audio FX</span><span class="ver">v0.13.3</span></div>
+      <p>Runs in Signal Chain slots and Master FX — glitch a synth, or the whole Move mix.</p>
+      <ul>
+        <li>Retroactive capture: loop the last 1 step – 16 bars you just played</li>
+        <li>26 effects: retrigger, varispeed, tape stop, vinyl scratch, vowel filter, granular scatter…</li>
+        <li>Seeded per-slice FX + slice-reorder patterns; step buttons edit &amp; mute</li>
+        <li>A/B punch between clean loop and pattern; dual-mono lanes with per-side patterns</li>
+      </ul>
+      <div class="install">Module Store: <b>smack</b> · Custom install: <a href="https://github.com/timncox/schwung-smack-fx">timncox/schwung-smack-fx</a></div>
+    </div>
+    <div class="card">
+      <h3>Smack In</h3>
+      <div class="meta"><span class="badge">Voice</span><span class="ver">v0.13.3</span></div>
+      <p>Standalone build that reads Move's selected input — mic, line-in, or USB-C — directly in one slot. No routing required.</p>
+      <ul>
+        <li>Same capture / slice / seed engine as Smack</li>
+        <li>Perfect for glitching external gear through the Move</li>
+      </ul>
+      <div class="install">Module Store: <b>smack-in</b> · Custom install: <a href="https://github.com/timncox/schwung-smack-voice">timncox/schwung-smack-voice</a></div>
+    </div>
+    <div class="card">
+      <h3>Oversmack</h3>
+      <div class="meta"><span class="badge">Overtake</span><span class="ver">v0.10.2</span></div>
+      <p>Full-surface Smack: the whole pad grid becomes a step-FX editor for the input loop.</p>
+      <ul>
+        <li>Steps show the pattern and select slices; playhead chase</li>
+        <li>Upper pad rows are a rearrangeable 22-effect palette — pins survive Re-Roll</li>
+        <li>Move's clock keeps running; Back hides the UI while audio keeps processing</li>
+      </ul>
+      <div class="install">Module Store: <b>oversmack</b> · Custom install: <a href="https://github.com/timncox/schwung-oversmack">timncox/schwung-oversmack</a></div>
+    </div>
+  </div>
+</div></section>
+
+<!-- ================= BELT ================= -->
+<section class="family" id="belt"><div class="wrap">
+  <div class="fam-head"><span class="emoji">🎤</span><h2>Belt</h2><span class="tag">Live vocal processor · named because it makes you sound like you can</span></div>
+  <p class="fam-lede">Autotune-style pitch correction, up to four diatonic backing-vocal
+  harmonies, a stereo doubler, and a formant knob — on the Move's own mic, line-in, or
+  USB-C input. One YIN pitch analysis drives every TD-PSOLA voice, so seven voices cost
+  barely more than one, at ~26 ms fixed latency.</p>
+  <div class="fam-links">
+    <a class="btn primary" href="https://timncox.github.io/schwung-belt/">📖 Operation manual</a>
+    <a class="btn" href="https://github.com/timncox/schwung-belt">Source</a>
+  </div>
+  <div class="cards">
+    <div class="card">
+      <h3>Belt</h3>
+      <div class="meta"><span class="badge">Audio FX</span><span class="ver">v0.1.2</span></div>
+      <p>Chain + Master FX build — processes whatever is upstream in the signal chain.</p>
+      <ul>
+        <li>Retune 0 = instant hard-tune robot, higher = transparent correction</li>
+        <li>Harmony voices 1–4: scale-aware 3rds, 5ths, octaves with per-voice detune &amp; spread</li>
+        <li>HARD pad for momentary or latched T-Pain punch</li>
+        <li>Tuner strip on steps 1–12; Flex / Humanize keeps your slides and vibrato</li>
+      </ul>
+      <div class="install">Module Store: <b>belt</b> · Custom install: <a href="https://github.com/timncox/schwung-belt-fx">timncox/schwung-belt-fx</a></div>
+    </div>
+    <div class="card">
+      <h3>Belt In</h3>
+      <div class="meta"><span class="badge">Voice</span><span class="ver">v0.1.2</span></div>
+      <p>The live-vocals build: a standalone slot synth on the hardware input, same chain UI and engine.</p>
+      <ul>
+        <li>Sing straight into the Move's mic, line-in, or USB-C</li>
+        <li>Feedback-safe: auto-mutes when the speaker would howl (Monitor pad overrides)</li>
+      </ul>
+      <div class="install">Module Store: <b>belt-in</b> · Custom install: <a href="https://github.com/timncox/schwung-belt-voice">timncox/schwung-belt-voice</a></div>
+    </div>
+  </div>
+</div></section>
+
+<!-- ================= MARK ================= -->
+<section class="family" id="mark"><div class="wrap">
+  <div class="fam-head"><span class="emoji">🔁</span><h2>Mark</h2><span class="tag">Five-track live loop station · named after Marc Rebillet</span></div>
+  <p class="fam-lede">The Boss RC-505 workflow on the Move's pad grid: five independent
+  stereo loop tracks cycling record → play → overdub, measure-snapped to the first
+  loop or Move's MIDI clock. Move keeps playing underneath, so its own tracks are
+  your rhythm section.</p>
+  <div class="fam-links">
+    <a class="btn primary" href="https://timncox.github.io/schwung-mark/">📖 Operation manual</a>
+    <a class="btn" href="https://github.com/timncox/schwung-mark">Source</a>
+  </div>
+  <div class="cards">
+    <div class="card">
+      <h3>Mark</h3>
+      <div class="meta"><span class="badge">Overtake</span><span class="ver">v0.4.0</span></div>
+      <p>Per-track stop/clear, level, pan, reverse and one-shot, with single-level undo/redo of the last take.</p>
+      <ul>
+        <li>16 session slots: loop audio + settings, saved on the Move, survive reinstalls</li>
+        <li>Per-track FX insert: built-ins or any chainable Schwung Audio FX (yes, including Smack and Belt)</li>
+        <li>Single mode turns the five tracks into exclusive song sections</li>
+        <li>Web mixer at <code>move.local</code>: faders, pans, FX, modes, session grid</li>
+      </ul>
+      <div class="install">Module Store: <b>mark</b> · Custom install: <a href="https://github.com/timncox/schwung-mark">timncox/schwung-mark</a></div>
+    </div>
+  </div>
+</div></section>
+
+<!-- ================= MONO ================= -->
+<section class="family" id="mono"><div class="wrap">
+  <div class="fam-head"><span class="emoji">🎛️</span><h2>Mono</h2><span class="tag">Clean-room, Monomachine-inspired digital instrument</span></div>
+  <p class="fam-lede">Six machine types — SuperWave Saw / Pulse / Ensemble, a SID
+  6581-style oscillator, a DigiPRO-style 12-bit wavetable, and two-block FM — each
+  with an AHDR envelope, dual-cutoff resonant filter, distortion, EQ, sample-rate
+  reduction, stereo filtered delay, and three assignable LFOs with 114 destinations.</p>
+  <div class="fam-links">
+    <a class="btn primary" href="https://timncox.github.io/schwung-mono/">📖 Operation manual</a>
+    <a class="btn" href="https://github.com/timncox/schwung-mono">Source</a>
+  </div>
+  <div class="cards">
+    <div class="card">
+      <h3>Mono</h3>
+      <div class="meta"><span class="badge">Overtake</span><span class="ver">v0.3.1</span></div>
+      <p>Full-surface six-track machine synth with an internal 64-step sequencer.</p>
+      <ul>
+        <li>Per-step parameter locks, probability, retrigs, conditions, and slide</li>
+        <li>Independent track timing, arp, neighbor routing, and song mode</li>
+        <li>Per-machine sound memory: switch machines and your settings come back</li>
+      </ul>
+      <div class="install">Custom install: <a href="https://github.com/timncox/schwung-mono">timncox/schwung-mono</a></div>
+    </div>
+    <div class="card">
+      <h3>Mono Voice</h3>
+      <div class="meta"><span class="badge">Voice</span><span class="ver">v0.3.1</span></div>
+      <p>One machine voice inside a normal Move track, driven by Move's own pads and sequencer.</p>
+      <ul>
+        <li>Same six machines and full synthesis panel as Mono</li>
+        <li>Shift-banks add Drift, Fold, Bits, Noise, envelope curves, filter drive &amp; more</li>
+      </ul>
+      <div class="install">Custom install: <a href="https://github.com/timncox/schwung-mono-voice">timncox/schwung-mono-voice</a></div>
+    </div>
+  </div>
+</div></section>
+
+<!-- ================= INSTALL ================= -->
+<section id="get-started"><div class="wrap">
+  <h2>Get started</h2>
+  <div class="steps">
+    <div class="step"><div class="n">1</div><h3>Install Schwung</h3>
+      <p>All modules run on <a href="https://github.com/charlesvestal/schwung">Schwung</a>,
+      the open framework for custom JavaScript and native DSP modules on the Ableton Move.</p></div>
+    <div class="step"><div class="n">2</div><h3>Open the manager</h3>
+      <p>Browse to <code>move.local:7700</code> on the same network as your Move and open the
+      <b>Module Store</b>.</p></div>
+    <div class="step"><div class="n">3</div><h3>Install a module</h3>
+      <p>Search the store by name, or use <b>Install Custom Module</b> with any of the
+      repository links above. Updates show up in the manager automatically.</p></div>
+  </div>
+</div></section>
+
+<footer><div class="wrap">
+  <p>© Tim Cox · MIT licensed · built on <a href="https://github.com/charlesvestal/schwung">Schwung</a> for the Ableton Move</p>
+  <p><a href="https://github.com/timncox">github.com/timncox</a></p>
+</div></footer>
+
+</body>
+</html>
