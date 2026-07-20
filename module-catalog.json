@@ -1154,7 +1154,7 @@
       "github_repo": "timncox/schwung-mono",
       "default_branch": "main",
       "asset_name": "mono-module.tar.gz",
-      "min_host_version": "0.11.4"
+      "min_host_version": "0.11.6"
     },
     {
       "id": "mono-voice",
