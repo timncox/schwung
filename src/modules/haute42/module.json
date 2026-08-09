@@ -1,0 +1,13 @@
+{
+    "id": "haute42",
+    "name": "Haute42",
+    "version": "0.1.0",
+    "description": "Scale-maps a Haute42 (or any button controller sending on channel 16) into Move's native tracks or a Schwung slot synth.",
+    "author": "Schwung",
+    "ui": "ui.js",
+    "api_version": 1,
+    "component_type": "overtake",
+    "capabilities": {
+        "midi_out": true
+    }
+}
