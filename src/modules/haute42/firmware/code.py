@@ -76,7 +76,10 @@ midi_out = usb_midi.ports[1]
 ALL_PINS = NOTE_PINS + CC_PINS
 NUM_NOTES = len(NOTE_PINS)
 
-keys = keypad.Keys(ALL_PINS, value_when_pressed=False, pull=True)
+# interval defaults to 0.020 (a 20 ms scan), which is audible latency on an
+# instrument. Kailh low-profile switches settle in ~1-5 ms, so 4 ms is still
+# comfortably past the bounce while feeling immediate.
+keys = keypad.Keys(ALL_PINS, value_when_pressed=False, pull=True, interval=0.004)
 
 
 def send(status, data1, data2):
