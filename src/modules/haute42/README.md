@@ -118,29 +118,34 @@ that you would need CircuitPython safe mode to recover `code.py`.
 
 ### Pin map
 
-`code.py` uses the GP2040-CE **Haute42 COSMOX** pinout, which is an assumption
-— GP2040-CE ships several Haute42 variants (COSMOX, COSMOXCAS, COSMOXCAT,
-COSMOXMLite, COSMOXMUltra, COSMOXXAnalog) with different pin assignments.
+**Verified 2026-08-12** against a **Haute42 COSMOX_Lite_Ultra** running
+GP2040-CE v0.7.10: all 19 GPIOs claimed by `code.py` match the board's own
+config exactly.
 
-**Confirm it while you are in the web configurator taking backup #1**, because
-that is the only moment the board will tell you itself: the **Pin Mapping**
-page lists the real GPIO for every button. Compare it against `NOTE_PINS` /
-`CC_PINS` in `firmware/code.py` and fix them before flashing. The expected
-COSMOX values are:
+If you have a different Haute42 (GP2040-CE ships COSMOX, COSMOXCAS, COSMOXCAT,
+COSMOXMLite, COSMOXMUltra, COSMOXXAnalog), re-check before flashing — the web
+configurator's `/api/getPinMappings` endpoint is the authoritative source, and
+it is only reachable while in web-config mode. `curl` it and decode with the
+`GpioAction` enum in
+<https://github.com/OpenStickCommunity/GP2040-CE/blob/main/proto/enums.proto>:
 
 | GPIO | Button | | GPIO | Button |
 |------|--------|-|------|--------|
-| GP2  | UP     | | GP10 | P1     |
-| GP3  | DOWN   | | GP11 | P2     |
-| GP4  | RIGHT  | | GP12 | P3     |
-| GP5  | LEFT   | | GP13 | P4     |
-| GP6  | K1     | | GP14 | Turbo  |
-| GP7  | K2     | | GP16 | S1     |
-| GP8  | K3     | | GP17 | S2     |
-| GP9  | K4     | | GP18/19 | L3/R3 |
+| GP2  | UP     | | GP12 | R1 / P3 |
+| GP3  | DOWN   | | GP13 | L1 / P4 |
+| GP4  | RIGHT  | | GP14 | Turbo  |
+| GP5  | LEFT   | | GP16 | S1     |
+| GP6  | B1 / K1 | | GP17 | S2    |
+| GP7  | B2 / K2 | | GP18 | L3    |
+| GP8  | R2 / K3 | | GP19 | R3    |
+| GP9  | L2 / K4 | | GP20 | A1    |
+| GP10 | B3 / P1 | | GP21 | A2    |
+| GP11 | B4 / P2 | |      |       |
 
-If yours differs, the per-board `BoardConfig.h` files are under
-<https://github.com/OpenStickFoundation/GP2040-CE/tree/main/configs>.
+**Alternate footprints are real, and both halves are live.** On this board
+GP26 also maps to L3 and GP27 also maps to UP — the same action on two GPIOs,
+because the PCB supports two switch positions. `code.py` deliberately claims
+only GP18 and GP2. Claiming a pair would make that button fire its note twice.
 
 Button order as scale degrees 0–15: bottom action row, top action row,
 direction cluster, then aux. S1/S2/Turbo send CC 20/21/22.

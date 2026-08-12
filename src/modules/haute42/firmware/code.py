@@ -12,8 +12,10 @@ the Schwung module is the only thing listening. That separation is also what
 keeps the module's injected notes from feeding back into its own input --
 see the cascade note in docs/MIDI_INJECTION.md.
 
-Pin map below is the GP2040-CE **Haute42 COSMOX** config. GP2040-CE ships five
-Haute42 variants (COSMOX, COSMOXCAS, COSMOXCAT, COSMOXMLite, COSMOXMUltra,
+Pin map below was verified 2026-08-12 against a Haute42 COSMOX_Lite_Ultra
+running GP2040-CE v0.7.10 -- read back from the board's own
+/api/getPinMappings, all 19 pins matching. GP2040-CE ships other Haute42
+variants (COSMOX, COSMOXCAS, COSMOXCAT, COSMOXMLite, COSMOXMUltra,
 COSMOXXAnalog); if yours is a different one, check its BoardConfig.h at
 https://github.com/OpenStickCommunity/GP2040-CE/tree/main/configs
 and adjust NOTE_PINS / CC_PINS to match.
