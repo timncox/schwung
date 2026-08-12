@@ -31,23 +31,81 @@ can echo straight back. The guard is channel separation — we only ever read
 channel 16 and never inject there, so every echo is dropped by the first line
 of the handler.
 
+## Backing up before you flash
+
+Flashing wipes GP2040-CE and everything it stored. Take **both** backups below
+— they cover different failure modes, and the second one cannot be taken once
+you have left GP2040-CE behind.
+
+### 1. GP2040-CE config (do this first)
+
+This is the readable, portable copy of your button mapping — the one you want
+if you ever reinstall a *newer* GP2040-CE rather than restoring this exact
+image.
+
+1. Plug the controller in **while holding S2**. (Or, if it is already plugged
+   in, hold **S2 + B3 + B4** for five seconds.) This boots the web
+   configurator instead of the gamepad.
+2. Open <http://192.168.7.1>.
+3. **Configuration → Data Backup and Restoration → Backup To File**, with all
+   options selected.
+4. While you are in there, note the **firmware version** and **board config**
+   shown on the home page, and open **Pin Mapping** — see "Pin map" below,
+   because this is your chance to confirm `code.py` matches your board.
+
+### 2. Full flash image
+
+This is the belt-and-braces one: every byte of flash, restorable by drag and
+drop, putting the controller back exactly as it is today.
+
+```bash
+brew install picotool          # once
+./backup-controller.sh         # writes to ~/tim-os/scratch/haute42-backup-<date>/
+```
+
+Plug the controller in **while holding S1 + S2 + UP** to enter BOOTSEL mode
+(it mounts as `RPI-RP2`), then run the script. It dumps flash twice and
+compares the two reads before declaring success — GP2040-CE keeps its config at
+the *end* of flash, so a truncated read would silently lose exactly the thing
+you are trying to preserve.
+
+To restore later: hold BOOTSEL, drag `flash-backup.uf2` onto `RPI-RP2`.
+
 ## Flashing the controller
 
-Everything here is reversible. Keep your GP2040-CE `.uf2` and you can put the
-controller back to being a fightstick by repeating step 2 with that file.
+Everything here is reversible — see "Going back" below.
 
-1. **Back up your GP2040-CE config first.** Plug the controller into a
-   computer, open <http://192.168.7.1>, and save your button mapping and RGB
-   settings. Flashing wipes them.
-2. **Install CircuitPython.** Hold **BOOTSEL** while plugging in — the board
-   mounts as `RPI-RP2`. Drag on the CircuitPython `.uf2` for Raspberry Pi Pico
-   from <https://circuitpython.org/board/raspberry_pi_pico/>. (If your Haute42
-   is an RP2350 board, use the Pico 2 build instead.) It reboots as
-   `CIRCUITPY`.
+1. **Take both backups above.**
+2. **Install CircuitPython.** With the board in BOOTSEL mode (hold
+   **S1 + S2 + UP** while plugging in, or the on-board BOOT button if your case
+   exposes it) it mounts as `RPI-RP2`. Drag on the CircuitPython `.uf2` for
+   Raspberry Pi Pico from
+   <https://circuitpython.org/board/raspberry_pi_pico/>. (If your Haute42 is an
+   RP2350 board, use the Pico 2 build instead.) It reboots as `CIRCUITPY`.
 3. **Copy the firmware.** Put `firmware/boot.py` and `firmware/code.py` in the
    root of `CIRCUITPY`.
 4. **Replug.** It should now enumerate as a MIDI device named
    "Haute42 MIDI" — and `CIRCUITPY` will be *gone*. That is intentional.
+
+### Going back
+
+Once CircuitPython replaces GP2040-CE, the **S1 + S2 + UP** combo no longer
+exists — that was GP2040-CE's. If your case does not expose the BOOT button,
+the way back is through the REPL:
+
+1. **Hold S1 while plugging in** (maintenance mode — see below). This keeps the
+   serial console alive.
+2. Connect to the REPL (`screen /dev/tty.usbmodem*`, or Mu / Thonny) and run:
+
+   ```python
+   import microcontroller
+   microcontroller.on_next_reset(microcontroller.RunMode.UF2)
+   microcontroller.reset()
+   ```
+
+   Eject `CIRCUITPY` first if it is mounted.
+3. The board reappears as `RPI-RP2`. Drag on `flash-backup.uf2` to restore
+   GP2040-CE exactly, or a fresh GP2040-CE `.uf2` plus your config backup.
 
 ### Getting back in to edit
 
@@ -60,11 +118,29 @@ that you would need CircuitPython safe mode to recover `code.py`.
 
 ### Pin map
 
-`code.py` uses the GP2040-CE **Haute42 COSMOX** pinout. GP2040-CE ships several
-Haute42 variants (COSMOX, COSMOXCAS, COSMOXCAT, COSMOXMLite, COSMOXMUltra,
-COSMOXXAnalog). If yours is a different one, check its `BoardConfig.h` under
-<https://github.com/OpenStickCommunity/GP2040-CE/tree/main/configs> and edit
-`NOTE_PINS` / `CC_PINS`.
+`code.py` uses the GP2040-CE **Haute42 COSMOX** pinout, which is an assumption
+— GP2040-CE ships several Haute42 variants (COSMOX, COSMOXCAS, COSMOXCAT,
+COSMOXMLite, COSMOXMUltra, COSMOXXAnalog) with different pin assignments.
+
+**Confirm it while you are in the web configurator taking backup #1**, because
+that is the only moment the board will tell you itself: the **Pin Mapping**
+page lists the real GPIO for every button. Compare it against `NOTE_PINS` /
+`CC_PINS` in `firmware/code.py` and fix them before flashing. The expected
+COSMOX values are:
+
+| GPIO | Button | | GPIO | Button |
+|------|--------|-|------|--------|
+| GP2  | UP     | | GP10 | P1     |
+| GP3  | DOWN   | | GP11 | P2     |
+| GP4  | RIGHT  | | GP12 | P3     |
+| GP5  | LEFT   | | GP13 | P4     |
+| GP6  | K1     | | GP14 | Turbo  |
+| GP7  | K2     | | GP16 | S1     |
+| GP8  | K3     | | GP17 | S2     |
+| GP9  | K4     | | GP18/19 | L3/R3 |
+
+If yours differs, the per-board `BoardConfig.h` files are under
+<https://github.com/OpenStickFoundation/GP2040-CE/tree/main/configs>.
 
 Button order as scale degrees 0–15: bottom action row, top action row,
 direction cluster, then aux. S1/S2/Turbo send CC 20/21/22.
