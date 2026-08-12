@@ -17,7 +17,14 @@
 
 set -euo pipefail
 
-DEST="${1:-$HOME/tim-os/scratch/haute42-backup-$(date +%Y-%m-%d)}"
+# On macOS picotool generally needs root to claim the USB device -- without it
+# it can segfault rather than report a permissions error. When run under sudo,
+# $HOME is root's, so resolve the real user's home and hand the files back at
+# the end.
+REAL_USER="${SUDO_USER:-$(id -un)}"
+REAL_HOME="$(eval echo "~$REAL_USER")"
+
+DEST="${1:-$REAL_HOME/tim-os/scratch/haute42-backup-$(date +%Y-%m-%d)}"
 
 die() { printf '\n\033[31merror:\033[0m %s\n' "$1" >&2; exit 1; }
 note() { printf '\033[36m==>\033[0m %s\n' "$1"; }
@@ -29,8 +36,23 @@ command -v picotool >/dev/null 2>&1 || die \
 # picotool info exits non-zero with a readable message when it finds nothing,
 # so surface that rather than letting `save` fail more cryptically later.
 note "Looking for a device in BOOTSEL mode..."
-if ! INFO="$(picotool info -a 2>&1)"; then
+# Capture the status separately -- `if ! cmd` inverts it, so $? inside the
+# branch would read 0 and the crash case below would never fire.
+rc=0
+INFO="$(picotool info -a 2>&1)" || rc=$?
+if [ "$rc" -ne 0 ]; then
     printf '%s\n' "$INFO" >&2
+    # 139 = SIGSEGV. picotool crashes rather than erroring when it cannot claim
+    # the USB device, which on macOS means either missing root or being run from
+    # a launchd-spawned process (macOS 15.3+ blocks USB access for those).
+    if [ "$rc" -ge 128 ] || [ -z "$INFO" ]; then
+        die "picotool crashed trying to reach the device (exit $rc).
+
+This is a USB permissions problem, not a missing device. Two fixes, in order:
+  1. Run this with sudo:  sudo $0
+  2. Run it from Terminal.app directly, not from an editor, IDE, or agent --
+     macOS 15.3+ blocks USB access for launchd-spawned processes."
+    fi
     die "No RP2040 found in BOOTSEL mode.
 
 Unplug the controller, then plug it back in while holding S1 + S2 + UP.
@@ -88,6 +110,12 @@ This is only half the backup. The GP2040-CE config export (from the web
 configurator at 192.168.7.1) downloads to ~/Downloads -- move it in here
 so both halves live together.
 EOF
+
+# Hand the files back if we ran under sudo, so they are not root-owned.
+if [ -n "${SUDO_USER:-}" ]; then
+    chown -R "$REAL_USER" "$DEST"
+    note "Ownership returned to $REAL_USER"
+fi
 
 note "Done."
 printf '\n'
