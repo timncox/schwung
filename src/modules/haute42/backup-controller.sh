@@ -46,12 +46,22 @@ if [ "$rc" -ne 0 ]; then
     # the USB device, which on macOS means either missing root or being run from
     # a launchd-spawned process (macOS 15.3+ blocks USB access for those).
     if [ "$rc" -ge 128 ] || [ -z "$INFO" ]; then
-        die "picotool crashed trying to reach the device (exit $rc).
+        if [ "$(id -u)" -ne 0 ]; then
+            die "picotool crashed trying to reach the device (exit $rc), running as $(id -un).
 
-This is a USB permissions problem, not a missing device. Two fixes, in order:
-  1. Run this with sudo:  sudo $0
-  2. Run it from Terminal.app directly, not from an editor, IDE, or agent --
-     macOS 15.3+ blocks USB access for launchd-spawned processes."
+This is a USB permissions problem, not a missing device. libusb needs root:
+
+    sudo $0"
+        fi
+        die "picotool crashed trying to reach the device (exit $rc) EVEN AS ROOT.
+
+So this is not just missing privileges. Remaining causes, in order:
+  1. Not a real terminal -- macOS 15.3+ blocks USB for launchd-spawned
+     processes. Run from Terminal.app, not an editor/IDE/agent shell.
+  2. Terminal.app lacks USB permission. System Settings -> Privacy &
+     Security -> check for a prompt, and grant Terminal 'Full Disk Access'.
+  3. Homebrew's picotool build is broken on this macOS. See README for the
+     pyusb fallback, which talks PICOBOOT directly."
     fi
     die "No RP2040 found in BOOTSEL mode.
 
