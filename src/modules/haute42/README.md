@@ -53,23 +53,42 @@ image.
    shown on the home page, and open **Pin Mapping** — see "Pin map" below,
    because this is your chance to confirm `code.py` matches your board.
 
-### 2. Full flash image
+### 2. The stock firmware itself
 
-This is the belt-and-braces one: every byte of flash, restorable by drag and
-drop, putting the controller back exactly as it is today.
+**Do not assume you can just re-download GP2040-CE.** Haute42 boards often run
+a *vendor* build that does not exist upstream — this one reports
+`Haute42COSMOX_Lite_Ultra`, and the OpenStickCommunity repo has no such board
+config in `configs/` or in any release asset. Reinstalling "GP2040-CE" from
+upstream would put a **different board config** on the controller.
+
+Get the matching build from the vendor before you flash:
+
+- <https://cosmoxgaming.com/support/> — note the vendor's download labels are
+  marketing names, not build names. The `Haute42COSMOX_Lite_Ultra` build is
+  listed there as "GP2040-CE_0.7.10_COSMOX_Ambient_LED".
+
+Confirm you got the right one rather than trusting the label — the build string
+is embedded in the `.uf2`:
 
 ```bash
-brew install picotool          # once
-./backup-controller.sh         # writes to ~/tim-os/scratch/haute42-backup-<date>/
+strings -a firmware.uf2 | grep -i "GP2040-CE_"
 ```
 
-Plug the controller in **while holding S1 + S2 + UP** to enter BOOTSEL mode
-(it mounts as `RPI-RP2`), then run the script. It dumps flash twice and
-compares the two reads before declaring success — GP2040-CE keeps its config at
-the *end* of flash, so a truncated read would silently lose exactly the thing
-you are trying to preserve.
+That must match `version` from `/api/getFirmwareVersion` on your board. Grab
+their `FLASH_NUKE.uf2` too; it is the documented recovery path.
 
-To restore later: hold BOOTSEL, drag `flash-backup.uf2` onto `RPI-RP2`.
+### Optional: raw flash dump
+
+`backup-controller.sh` dumps all of flash via `picotool` (dumping twice and
+comparing, since a truncated read would silently lose the config at the end of
+flash). Stock firmware + config JSON is already a complete restore path, so
+this is belt-and-braces.
+
+**Known broken on macOS 26:** `picotool` 2.3.0 segfaults (exit 139, no output)
+on any command that touches the device — as root, from a real Terminal. It is a
+picotool bug, not a permissions problem; `picotool version` still works, which
+makes it look like the device is missing. The script detects the crash and says
+so.
 
 ## Flashing the controller
 
