@@ -63,7 +63,8 @@ note "Both passes identical -- read is stable."
 
 # ---- Record provenance ----------------------------------------------------
 printf '%s\n' "$INFO" > "$DEST/picotool-info.txt"
-shasum -a 256 "$DEST/flash-backup.uf2" > "$DEST/SHA256"
+# Relative path, so `shasum -c` still works if the backup directory is moved.
+( cd "$DEST" && shasum -a 256 flash-backup.uf2 > SHA256 )
 
 SIZE_H="$(du -h "$DEST/flash-backup.uf2" | cut -f1)"
 BYTES="$(wc -c < "$DEST/flash-backup.uf2" | tr -d ' ')"
@@ -82,6 +83,10 @@ To restore the controller exactly as it was:
 
 Verify this file still matches its checksum before relying on it:
   shasum -a 256 -c SHA256
+
+This is only half the backup. The GP2040-CE config export (from the web
+configurator at 192.168.7.1) downloads to ~/Downloads -- move it in here
+so both halves live together.
 EOF
 
 note "Done."
