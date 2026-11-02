@@ -1,3 +1,8 @@
+---
+status: active
+last_touched: 2026-09-07
+---
+
 # CLAUDE.md
 
 Instructions for Claude Code when working with this repository.
